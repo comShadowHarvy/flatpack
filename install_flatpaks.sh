@@ -58,6 +58,8 @@ MAX_RETRIES=3
 REQUIRED_SPACE=2000000  # 2GB in KB
 SKIP_ALREADY_INSTALLED=true
 CREATE_DESKTOP_SHORTCUTS=false
+PARALLEL_JOBS=3  # Number of concurrent installation jobs
+STATE_FILE="$HOME/.local/share/flatpack/install_state.json"  # Installation state tracking
 
 # Function to create default configuration file
 create_default_config() {
@@ -107,6 +109,7 @@ load_config() {
                 REQUIRED_SPACE) REQUIRED_SPACE="$value" ;;
                 SKIP_ALREADY_INSTALLED) SKIP_ALREADY_INSTALLED="$value" ;;
                 CREATE_DESKTOP_SHORTCUTS) CREATE_DESKTOP_SHORTCUTS="$value" ;;
+                PARALLEL_JOBS) PARALLEL_JOBS="$value" ;;
                 CUSTOM_APPS) CUSTOM_APPS="$value" ;;
             esac
         done < "$CONFIG_FILE"
@@ -316,17 +319,55 @@ install_flatpak() {
             echo -e "${YELLOW}[RETRY]${NC} Attempt $(($retry_count + 1)) of $max_retries for $friendly_name"
         fi
         
-        # Fake installation progress
+        # Real installation progress tracking
         echo -n "          Progress: "
-        for i in {1..30}; do
-            echo -n "▓"
-            sleep 0.1
-        done
-        echo ""
         
-        # Attempt installation with detailed error capture
-        local install_output
-        if install_output=$(flatpak install --noninteractive flathub "$app_id" 2>&1); then
+        # Create a temporary file to capture Flatpak output
+        local progress_file="/tmp/flatpak_progress_$$_${retry_count}"
+        
+        # Install with progress monitoring
+        (
+            flatpak install --noninteractive flathub "$app_id" 2>&1 | \
+            while IFS= read -r line; do
+                echo "$line" >> "$progress_file"
+                
+                # Extract progress from Flatpak output
+                if [[ $line == *"Downloading"* ]]; then
+                    echo -n "D"
+                elif [[ $line == *"Installing"* ]]; then
+                    echo -n "I"
+                elif [[ $line == *"Resolving"* ]]; then
+                    echo -n "R"
+                elif [[ $line == *"Fetching"* ]]; then
+                    echo -n "F"
+                elif [[ $line == *"delta"* ]]; then
+                    echo -n "Δ"
+                elif [[ $line =~ [0-9]+% ]]; then
+                    # Extract percentage if available
+                    local percent=$(echo "$line" | grep -o '[0-9]*%' | head -1)
+                    if [ -n "$percent" ]; then
+                        echo -n "[$percent]"
+                    fi
+                else
+                    echo -n "."
+                fi
+            done
+            echo $? > "${progress_file}.exit_code"
+        ) &
+        local progress_pid=$!
+        
+        # Wait for installation to complete
+        wait $progress_pid
+        local install_exit_code=$(cat "${progress_file}.exit_code" 2>/dev/null || echo "1")
+        
+        echo "  ✓"
+        
+        # Clean up progress files and use the captured result
+        local install_output=$(cat "$progress_file" 2>/dev/null || echo "No output captured")
+        rm -f "$progress_file" "${progress_file}.exit_code"
+        
+        # Check installation result
+        if [ "$install_exit_code" -eq 0 ]; then
             echo -e "${GREEN}[✓ SUCCESS]${NC} $friendly_name installed successfully"
             return 0
         else
@@ -358,12 +399,194 @@ install_flatpak() {
     echo ""
 }
 
+# Function to save installation state
+save_installation_state() {
+    local state_dir=$(dirname "$STATE_FILE")
+    mkdir -p "$state_dir"
+    
+    # Create state JSON
+    cat > "$STATE_FILE" << EOF
+{
+    "timestamp": "$(date -Iseconds)",
+    "total_apps": ${#applications[@]},
+    "successful": [$(printf '"%s",' "${successful_installations[@]}" | sed 's/,$//') ],
+    "failed": [$(printf '"%s",' "${failed_installations[@]}" | sed 's/,$//') ],
+    "skipped": [$(printf '"%s",' "${skipped_installations[@]}" | sed 's/,$//') ],
+    "pending": [$(printf '"%s",' "${apps_to_install[@]}" | sed 's/,$//') ]
+}
+EOF
+}
+
+# Function to load previous installation state
+load_installation_state() {
+    if [ -f "$STATE_FILE" ]; then
+        echo -e "${YELLOW}[INFO]${NC} Previous installation state found"
+        
+        # Show previous session info
+        local timestamp=$(grep '"timestamp"' "$STATE_FILE" | cut -d'"' -f4 2>/dev/null || echo "unknown")
+        local prev_successful=$(grep -o '"successful": \[[^\]]*\]' "$STATE_FILE" | grep -o '"[^"]*"' | wc -l 2>/dev/null || echo 0)
+        local prev_failed=$(grep -o '"failed": \[[^\]]*\]' "$STATE_FILE" | grep -o '"[^"]*"' | wc -l 2>/dev/null || echo 0)
+        
+        echo -e "${GRAY}          Last run: $timestamp${NC}"
+        echo -e "${GRAY}          Previous: $prev_successful successful, $prev_failed failed${NC}"
+        echo ""
+        
+        read -p "$(echo -e "${WHITE}Resume from previous state? ${GREEN}[y]${WHITE}es/${RED}[N]${WHITE}o: ${NC}")" -r
+        if [[ $REPLY =~ ^[Yy]$ ]]; then
+            echo -e "${GREEN}[INFO]${NC} Resuming from previous installation state..."
+            
+            # Extract successful apps and mark them as skipped
+            local prev_successful_apps=$(grep -o '"successful": \[[^\]]*\]' "$STATE_FILE" | \
+                                        sed 's/"successful": \[\|\]//g' | \
+                                        tr ',' '\n' | \
+                                        sed 's/[" ]//g' | \
+                                        grep -v '^$')
+            
+            if [ -n "$prev_successful_apps" ]; then
+                echo -e "${YELLOW}[RESUME]${NC} Skipping previously successful installations:"
+                while IFS= read -r app; do
+                    if [ -n "$app" ]; then
+                        echo -e "  ${GREEN}✓${NC} ${app_names[$app]:-$app}"
+                        skipped_installations+=("$app")
+                    fi
+                done <<< "$prev_successful_apps"
+            fi
+            
+            return 0  # Resume mode
+        else
+            echo -e "${YELLOW}[INFO]${NC} Starting fresh installation (ignoring previous state)"
+            rm -f "$STATE_FILE"
+            return 1  # Fresh mode
+        fi
+    fi
+    return 1  # No previous state
+}
+
+# Function to clean up state file after successful completion
+clean_installation_state() {
+    if [ -f "$STATE_FILE" ] && [ ${#failed_installations[@]} -eq 0 ]; then
+        echo -e "${GREEN}[CLEANUP]${NC} All installations completed successfully, removing state file"
+        rm -f "$STATE_FILE"
+    fi
+}
+
+# Function to install a single app in background
+install_app_background() {
+    local app_id="$1"
+    local job_id="$2"
+    local temp_dir="$3"
+    
+    # Create temporary files for this job
+    local status_file="$temp_dir/job_${job_id}_status"
+    local output_file="$temp_dir/job_${job_id}_output"
+    local error_file="$temp_dir/job_${job_id}_error"
+    
+    # Mark job as started
+    echo "RUNNING" > "$status_file"
+    
+    # Run installation and capture result
+    if install_flatpak "$app_id" > "$output_file" 2> "$error_file"; then
+        echo "SUCCESS" > "$status_file"
+        echo "$app_id" >> "$temp_dir/successful_apps"
+    else
+        echo "FAILED" > "$status_file"
+        echo "$app_id" >> "$temp_dir/failed_apps"
+    fi
+}
+
+# Function to install applications in parallel
+install_apps_parallel() {
+    local apps_to_install=("$@")
+    local max_jobs=$PARALLEL_JOBS
+    local temp_dir="/tmp/flatpack_parallel_$$"
+    
+    # Create temporary directory for job tracking
+    mkdir -p "$temp_dir"
+    
+    # Initialize tracking files
+    touch "$temp_dir/successful_apps"
+    touch "$temp_dir/failed_apps"
+    
+    local job_count=0
+    local app_index=0
+    local total_apps=${#apps_to_install[@]}
+    local active_jobs=()
+    
+    echo -e "${CYAN}════════════════════════════════════════════════════════════════════${NC}"
+    echo -e "${WHITE}Installing $total_apps applications in parallel (max $max_jobs concurrent)...${NC}"
+    echo -e "${CYAN}════════════════════════════════════════════════════════════════════${NC}"
+    echo ""
+    
+    # Start initial batch of jobs
+    while [ $app_index -lt $total_apps ] && [ $job_count -lt $max_jobs ]; do
+        local app_id="${apps_to_install[$app_index]}"
+        
+        echo -e "${BLUE}[START]${NC} Starting installation of ${app_names[$app_id]} (Job $((job_count + 1)))..."
+        
+        # Start background job
+        install_app_background "$app_id" "$job_count" "$temp_dir" &
+        local job_pid=$!
+        active_jobs+=($job_pid)
+        
+        ((job_count++))
+        ((app_index++))
+    done
+    
+    # Monitor jobs and start new ones as they complete
+    while [ $app_index -lt $total_apps ] || [ ${#active_jobs[@]} -gt 0 ]; do
+        local new_active_jobs=()
+        
+        # Check each active job
+        for pid in "${active_jobs[@]}"; do
+            if kill -0 "$pid" 2>/dev/null; then
+                # Job still running
+                new_active_jobs+=($pid)
+            else
+                # Job completed, show result
+                wait "$pid"
+                echo -e "${GREEN}[COMPLETE]${NC} Job finished (PID: $pid)"
+                
+                # Start next job if available
+                if [ $app_index -lt $total_apps ]; then
+                    local app_id="${apps_to_install[$app_index]}"
+                    echo -e "${BLUE}[START]${NC} Starting installation of ${app_names[$app_id]}..."
+                    
+                    install_app_background "$app_id" "$job_count" "$temp_dir" &
+                    local new_job_pid=$!
+                    new_active_jobs+=($new_job_pid)
+                    
+                    ((job_count++))
+                    ((app_index++))
+                fi
+            fi
+        done
+        
+        active_jobs=("${new_active_jobs[@]}")
+        sleep 1  # Brief pause before checking again
+    done
+    
+    echo ""
+    echo -e "${GREEN}[COMPLETE]${NC} All parallel installations finished!"
+    
+    # Collect results
+    successful_installations=($(cat "$temp_dir/successful_apps" 2>/dev/null || echo ""))
+    failed_installations=($(cat "$temp_dir/failed_apps" 2>/dev/null || echo ""))
+    
+    # Clean up
+    rm -rf "$temp_dir"
+    
+    echo ""
+}
+
 # Main execution starts here
 show_title_screen
 show_loading_screen
 
 # Load configuration
 load_config
+
+# Check for previous installation state and offer resume
+load_installation_state
 
 echo -e "${CYAN}╔════════════════════════════════════════════════════════════════════╗"
 echo -e "║                     ${WHITE}FLATPAK INSTALLATION STARTED${CYAN}                      ║"
@@ -402,21 +625,40 @@ echo ""
 failed_installations=()
 successful_installations=()
 skipped_installations=()
+apps_to_install=()
 
+# First pass: determine which apps need installation
 for app in "${applications[@]}"; do
     # Check if app is already installed (if enabled in config)
     if [[ "$SKIP_ALREADY_INSTALLED" == "true" ]] && check_already_installed "$app"; then
         echo -e "${GREEN}[SKIP]${NC} ${app_names[$app]} is already installed"
         skipped_installations+=("$app")
     else
-        if install_flatpak "$app"; then
-            successful_installations+=("$app")
-        else
-            failed_installations+=("$app")
-        fi
+        apps_to_install+=("$app")
     fi
-    echo ""
 done
+
+echo ""
+
+# Install apps (parallel if PARALLEL_JOBS > 1, sequential otherwise)
+if [ ${#apps_to_install[@]} -gt 0 ]; then
+    if [ "$PARALLEL_JOBS" -gt 1 ]; then
+        echo -e "${CYAN}[INFO]${NC} Using parallel installation with $PARALLEL_JOBS concurrent jobs"
+        install_apps_parallel "${apps_to_install[@]}"
+    else
+        echo -e "${CYAN}[INFO]${NC} Using sequential installation (PARALLEL_JOBS=1)"
+        for app in "${apps_to_install[@]}"; do
+            if install_flatpak "$app"; then
+                successful_installations+=("$app")
+            else
+                failed_installations+=("$app")
+            fi
+            echo ""
+        done
+    fi
+else
+    echo -e "${YELLOW}[INFO]${NC} No applications need installation - all are already installed or skipped"
+fi
 
 # Installation summary
 echo -e "${CYAN}╔════════════════════════════════════════════════════════════════════╗"
@@ -463,6 +705,12 @@ fi
 
 echo ""
 echo -e "${CYAN}════════════════════════════════════════════════════════════════════${NC}"
+# Save installation state for potential resume
+save_installation_state
+
+# Clean up state file if all successful
+clean_installation_state
+
 echo -e "${WHITE}Installation completed by ${YELLOW}ShadowHarvy's${WHITE} Flatpak Auto-Installer${NC}"
 echo -e "${GRAY}Thank you for using this security-focused installation script!${NC}"
 echo -e "${CYAN}════════════════════════════════════════════════════════════════════${NC}"
