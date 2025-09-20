@@ -54,37 +54,95 @@ NC='\033[0m' # No Color
 # Configuration file variables with defaults
 CONFIG_FILE="$HOME/.config/flatpack/config.conf"
 CONFIG_DIR="$HOME/.config/flatpack"
+LOG_DIR="$HOME/.local/share/flatpack/logs"
+LOG_FILE="$HOME/.local/share/flatpack/install.log"
+STATE_FILE="$HOME/.local/share/flatpack/install_state.json"  # Installation state tracking
+BACKUP_FILE="$HOME/.local/share/flatpack/installed_apps_backup.json"
+
+# System detection variables
+SYSTEM_TYPE="unknown"
+GAMING_MODE=false
+DRY_RUN=false
+
+# Default configuration values
 MAX_RETRIES=3
 REQUIRED_SPACE=2000000  # 2GB in KB
 SKIP_ALREADY_INSTALLED=true
 CREATE_DESKTOP_SHORTCUTS=false
 PARALLEL_JOBS=3  # Number of concurrent installation jobs
-STATE_FILE="$HOME/.local/share/flatpack/install_state.json"  # Installation state tracking
+VERBOSE_OUTPUT=false
+LOG_LEVEL="INFO"  # DEBUG, INFO, WARN, ERROR
+ENABLE_LOGGING=true
+AUTO_UPDATE_CHECK=false
+CUSTOM_REPOSITORIES=""  # Custom Flatpak repositories
+POST_INSTALL_HOOKS=""  # Scripts to run after installation
+ENVIRONMENT_PROFILE="default"  # Environment-specific settings
 
 # Function to create default configuration file
 create_default_config() {
     mkdir -p "$CONFIG_DIR"
+    mkdir -p "$LOG_DIR"
+    mkdir -p "$(dirname "$STATE_FILE")"
     
     cat > "$CONFIG_FILE" << EOF
-# Flatpack Auto-Installer Configuration
+# Flatpack Auto-Installer Configuration v3.0
 # Generated: $(date)
 # Edit this file to customize installation preferences
 
-# Installation settings
+# =============================================================================
+# BASIC INSTALLATION SETTINGS
+# =============================================================================
 MAX_RETRIES=3                    # Number of retry attempts for failed installations
 REQUIRED_SPACE=2000000          # Required disk space in KB (2GB)
 SKIP_ALREADY_INSTALLED=true     # Skip apps that are already installed
-
-# Post-installation options  
 CREATE_DESKTOP_SHORTCUTS=false  # Create desktop shortcuts for installed apps
 
-# Advanced settings
-PARALLEL_JOBS=1                 # Number of parallel installation jobs (1=sequential)
+# =============================================================================
+# PERFORMANCE & PARALLEL PROCESSING
+# =============================================================================
+PARALLEL_JOBS=3                 # Number of parallel installation jobs (1=sequential)
 VERBOSE_OUTPUT=false            # Show detailed installation output
 
-# Custom applications (space-separated Flatpak IDs)
-# Add custom apps here, one per line with format: CUSTOM_APPS="app.id.here another.app.id"
+# =============================================================================
+# LOGGING & DEBUG SETTINGS
+# =============================================================================
+ENABLE_LOGGING=true             # Enable logging to files
+LOG_LEVEL="INFO"                # Logging level: DEBUG, INFO, WARN, ERROR
+LOG_RETENTION_DAYS=30           # Days to keep log files (0 = keep forever)
+
+# =============================================================================
+# ENVIRONMENT & SYSTEM INTEGRATION
+# =============================================================================
+ENVIRONMENT_PROFILE="default"    # Environment profile: default, steamdeck, bazzite, minimal
+AUTO_UPDATE_CHECK=false         # Check for app updates after installation
+ENABLE_SYSTEM_INTEGRATION=true  # Enable system integration features
+
+# =============================================================================
+# CUSTOM REPOSITORIES & APPLICATIONS
+# =============================================================================
+# Custom Flatpak repositories (space-separated URLs)
+# Example: CUSTOM_REPOSITORIES="https://custom.repo.com/repo.flatpakrepo"
+CUSTOM_REPOSITORIES=""
+
+# Custom applications to install (space-separated Flatpak IDs)
+# Add your own apps here: CUSTOM_APPS="app.id.here another.app.id"
 CUSTOM_APPS=""
+
+# =============================================================================
+# POST-INSTALLATION AUTOMATION
+# =============================================================================
+# Post-installation hook scripts (space-separated paths to executable scripts)
+# These will be executed after successful installations
+# Example: POST_INSTALL_HOOKS="/path/to/script1.sh /path/to/script2.sh"
+POST_INSTALL_HOOKS=""
+
+# =============================================================================
+# ADVANCED FEATURES
+# =============================================================================
+ENABLE_BACKUP_CREATION=true     # Create backup of installed apps list
+ENABLE_PROGRESS_NOTIFICATIONS=false  # Show desktop notifications for progress
+ENABLE_COMPLETION_SOUND=false   # Play sound when installation completes
+STRICT_VERIFICATION=true        # Enable strict application verification
 EOF
     
     echo -e "${GREEN}[✓]${NC} Configuration file created at: $CONFIG_FILE"
@@ -120,6 +178,259 @@ load_config() {
         create_default_config
     fi
     echo ""
+}
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# PHASE 3: SMART FEATURES - SYSTEM DETECTION & LOGGING
+# ═══════════════════════════════════════════════════════════════════════════════
+
+# Logging function with different levels
+log_message() {
+    local level="$1"
+    local message="$2"
+    local timestamp=$(date '+%Y-%m-%d %H:%M:%S')
+    
+    # Only log if logging is enabled
+    if [[ "$ENABLE_LOGGING" == "true" ]]; then
+        # Create log directory if needed
+        mkdir -p "$(dirname "$LOG_FILE")"
+        
+        # Check if we should log this level
+        case "$LOG_LEVEL" in
+            "DEBUG")
+                echo "[$timestamp] [$level] $message" >> "$LOG_FILE"
+                ;;
+            "INFO")
+                [[ "$level" =~ ^(INFO|WARN|ERROR)$ ]] && echo "[$timestamp] [$level] $message" >> "$LOG_FILE"
+                ;;
+            "WARN")
+                [[ "$level" =~ ^(WARN|ERROR)$ ]] && echo "[$timestamp] [$level] $message" >> "$LOG_FILE"
+                ;;
+            "ERROR")
+                [[ "$level" == "ERROR" ]] && echo "[$timestamp] [$level] $message" >> "$LOG_FILE"
+                ;;
+        esac
+    fi
+}
+
+# Function to detect system type
+detect_system_type() {
+    log_message "DEBUG" "Starting system type detection"
+    
+    # Check for SteamOS/SteamDeck
+    if [[ -f "/etc/os-release" ]]; then
+        source /etc/os-release
+        
+        if [[ "$ID" == "steamos" ]] || [[ "$NAME" == *"SteamOS"* ]]; then
+            SYSTEM_TYPE="steamdeck"
+            log_message "INFO" "Detected SteamDeck/SteamOS system"
+            return
+        fi
+        
+        # Check for Bazzite
+        if [[ "$NAME" == *"Bazzite"* ]] || [[ "$ID" == *"bazzite"* ]]; then
+            SYSTEM_TYPE="bazzite"
+            log_message "INFO" "Detected Bazzite handheld system"
+            return
+        fi
+        
+        # Check for other gaming-focused distributions
+        if [[ "$NAME" == *"ChimeraOS"* ]] || [[ "$NAME" == *"HoloISO"* ]]; then
+            SYSTEM_TYPE="gaming_distro"
+            log_message "INFO" "Detected gaming-focused distribution: $NAME"
+            return
+        fi
+    fi
+    
+    # Check if we're running on a handheld device (Steam Deck hardware)
+    if [[ -e "/dev/input/js0" ]] && lsusb | grep -q "Valve"; then
+        SYSTEM_TYPE="steamdeck_hardware"
+        log_message "INFO" "Detected Steam Deck hardware"
+        return
+    fi
+    
+    # Default to desktop Linux
+    SYSTEM_TYPE="desktop_linux"
+    log_message "INFO" "Detected standard desktop Linux system"
+}
+
+# Function to detect gaming mode
+detect_gaming_mode() {
+    log_message "DEBUG" "Checking for gaming mode"
+    
+    # Check for Gamescope session (SteamOS Gaming Mode)
+    if pgrep -x "gamescope" > /dev/null; then
+        GAMING_MODE=true
+        log_message "INFO" "Gaming mode detected: Gamescope session active"
+        return
+    fi
+    
+    # Check for Steam Big Picture mode
+    if pgrep -f "steam.*-bigpicture" > /dev/null; then
+        GAMING_MODE=true
+        log_message "INFO" "Gaming mode detected: Steam Big Picture active"
+        return
+    fi
+    
+    # Check environment variables that indicate gaming session
+    if [[ -n "$GAMESCOPE_WAYLAND_DISPLAY" ]] || [[ -n "$STEAM_FRAME_FORCE_CLOSE" ]]; then
+        GAMING_MODE=true
+        log_message "INFO" "Gaming mode detected: Gaming environment variables present"
+        return
+    fi
+    
+    GAMING_MODE=false
+    log_message "DEBUG" "Standard desktop mode detected"
+}
+
+# Function to get system-optimized app recommendations
+get_system_recommendations() {
+    local system_apps=()
+    
+    case "$SYSTEM_TYPE" in
+        "steamdeck"|"bazzite"|"gaming_distro")
+            # Gaming-focused systems get full app list plus extras
+            system_apps=("${applications[@]}")
+            log_message "INFO" "Using full gaming app set for $SYSTEM_TYPE"
+            ;;
+        "steamdeck_hardware")
+            # Steam Deck hardware but different OS
+            system_apps=("${applications[@]}")
+            log_message "INFO" "Using gaming app set for Steam Deck hardware"
+            ;;
+        "desktop_linux")
+            # Desktop Linux - focus on essentials
+            system_apps=(
+                "com.discordapp.Discord"
+                "com.spotify.Client" 
+                "org.keepassxc.KeePassXC"
+                "com.github.tchx84.Flatseal"
+                "net.lutris.Lutris"
+                "com.heroicgameslauncher.hgl"
+            )
+            log_message "INFO" "Using essential app set for desktop Linux"
+            ;;
+        *)
+            # Unknown system - use safe defaults
+            system_apps=("${applications[@]}")
+            log_message "WARN" "Unknown system type, using default app set"
+            ;;
+    esac
+    
+    # Update applications array
+    applications=("${system_apps[@]}")
+}
+
+# Function to parse command line arguments
+parse_arguments() {
+    while [[ $# -gt 0 ]]; do
+        case $1 in
+            --dry-run|--preview)
+                DRY_RUN=true
+                log_message "INFO" "Dry-run mode enabled"
+                shift
+                ;;
+            --verbose|-v)
+                VERBOSE_OUTPUT=true
+                log_message "INFO" "Verbose output enabled"
+                shift
+                ;;
+            --parallel-jobs|-j)
+                if [[ -n $2 ]] && [[ $2 =~ ^[0-9]+$ ]]; then
+                    PARALLEL_JOBS="$2"
+                    log_message "INFO" "Parallel jobs set to $2"
+                    shift 2
+                else
+                    echo -e "${RED}[ERROR]${NC} --parallel-jobs requires a number"
+                    exit 1
+                fi
+                ;;
+            --help|-h)
+                show_help
+                exit 0
+                ;;
+            *)
+                echo -e "${RED}[ERROR]${NC} Unknown option: $1"
+                echo -e "${YELLOW}[INFO]${NC} Use --help for available options"
+                exit 1
+                ;;
+        esac
+    done
+}
+
+# Help function
+show_help() {
+    echo -e "${CYAN}Flatpack Auto-Installer v3.0 - Usage:${NC}"
+    echo ""
+    echo -e "${WHITE}SYNOPSIS:${NC}"
+    echo -e "  $0 [OPTIONS]"
+    echo ""
+    echo -e "${WHITE}OPTIONS:${NC}"
+    echo -e "  ${GREEN}--dry-run, --preview${NC}     Show what would be installed without executing"
+    echo -e "  ${GREEN}--verbose, -v${NC}            Enable verbose output"
+    echo -e "  ${GREEN}--parallel-jobs, -j N${NC}    Set number of parallel installation jobs (default: 3)"
+    echo -e "  ${GREEN}--help, -h${NC}               Show this help message"
+    echo ""
+    echo -e "${WHITE}EXAMPLES:${NC}"
+    echo -e "  ${GRAY}$0${NC}                        # Run normal installation"
+    echo -e "  ${GRAY}$0 --dry-run${NC}             # Preview what would be installed"
+    echo -e "  ${GRAY}$0 --verbose -j 5${NC}        # Verbose output with 5 parallel jobs"
+    echo ""
+    echo -e "${WHITE}CONFIGURATION:${NC}"
+    echo -e "  Config file: ${GRAY}$CONFIG_FILE${NC}"
+    echo -e "  Log file:    ${GRAY}$LOG_FILE${NC}"
+    echo ""
+}
+
+# Function to show dry-run preview
+show_dry_run_preview() {
+    log_message "INFO" "Showing dry-run preview"
+    
+    clear
+    echo -e "${CYAN}╔════════════════════════════════════════════════════════════════════╗"
+    echo -e "║                        ${WHITE}DRY-RUN PREVIEW MODE${CYAN}                        ║"
+    echo -e "╚════════════════════════════════════════════════════════════════════╝${NC}"
+    echo ""
+    
+    # Show system information
+    echo -e "${WHITE}System Information:${NC}"
+    echo -e "  ${YELLOW}System Type:${NC} $SYSTEM_TYPE"
+    echo -e "  ${YELLOW}Gaming Mode:${NC} $([ "$GAMING_MODE" == "true" ] && echo "Yes" || echo "No")"
+    echo -e "  ${YELLOW}Parallel Jobs:${NC} $PARALLEL_JOBS"
+    echo ""
+    
+    # Show what would be installed
+    echo -e "${WHITE}Applications that would be processed:${NC}"
+    local would_install=0
+    local would_skip=0
+    
+    for app in "${applications[@]}"; do
+        if [[ "$SKIP_ALREADY_INSTALLED" == "true" ]] && check_already_installed "$app"; then
+            echo -e "  ${GREEN}[SKIP]${NC} ${app_names[$app]} (already installed)"
+            ((would_skip++))
+        else
+            echo -e "  ${BLUE}[INSTALL]${NC} ${app_names[$app]} ($app)"
+            ((would_install++))
+        fi
+    done
+    
+    echo ""
+    echo -e "${WHITE}Summary:${NC}"
+    echo -e "  ${BLUE}Would install:${NC} $would_install applications"
+    echo -e "  ${GREEN}Would skip:${NC} $would_skip applications"
+    echo -e "  ${YELLOW}Total applications:${NC} ${#applications[@]}"
+    echo ""
+    
+    if [ "$would_install" -gt 0 ]; then
+        echo -e "${CYAN}Installation method:${NC} $([ "$PARALLEL_JOBS" -gt 1 ] && echo "Parallel ($PARALLEL_JOBS jobs)" || echo "Sequential")"
+        echo -e "${CYAN}Estimated time:${NC} $([ "$PARALLEL_JOBS" -gt 1 ] && echo "~$((would_install * 2 / PARALLEL_JOBS)) minutes" || echo "~$((would_install * 3)) minutes")"
+    fi
+    
+    echo ""
+    echo -e "${YELLOW}[DRY-RUN]${NC} This is a preview only. No applications will be installed."
+    echo -e "${YELLOW}[INFO]${NC} Run without --dry-run to perform actual installation."
+    
+    exit 0
 }
 
 # Title screen function
@@ -579,11 +890,32 @@ install_apps_parallel() {
 }
 
 # Main execution starts here
-show_title_screen
-show_loading_screen
+# Parse command line arguments first
+parse_arguments "$@"
+
+# Initialize logging
+log_message "INFO" "========== Flatpack Auto-Installer v3.0 Started =========="
+log_message "INFO" "System: $(uname -a)"
+log_message "INFO" "User: $(whoami)"
+log_message "INFO" "Arguments: $*"
+
+# Detect system characteristics
+detect_system_type
+detect_gaming_mode
 
 # Load configuration
 load_config
+
+# Apply system-specific optimizations
+get_system_recommendations
+
+# Show dry-run preview if requested
+if [[ "$DRY_RUN" == "true" ]]; then
+    show_dry_run_preview
+fi
+
+show_title_screen
+show_loading_screen
 
 # Check for previous installation state and offer resume
 load_installation_state
@@ -593,23 +925,44 @@ echo -e "║                     ${WHITE}FLATPAK INSTALLATION STARTED${CYAN}    
 echo -e "╚════════════════════════════════════════════════════════════════════╝${NC}"
 echo ""
 
+# Show detected system information
+echo -e "${CYAN}╔════════════════════════════════════════════════════════════════════╗"
+echo -e "║                        ${WHITE}SYSTEM DETECTION RESULTS${CYAN}                       ║"
+echo -e "╚════════════════════════════════════════════════════════════════════╝${NC}"
+echo ""
+echo -e "${GREEN}[✓]${NC} System Type: ${YELLOW}$SYSTEM_TYPE${NC}"
+echo -e "${GREEN}[✓]${NC} Gaming Mode: $([ "$GAMING_MODE" == "true" ] && echo "${GREEN}Active${NC}" || echo "${GRAY}Inactive${NC}")"
+echo -e "${GREEN}[✓]${NC} Parallel Jobs: ${YELLOW}$PARALLEL_JOBS${NC}"
+echo -e "${GREEN}[✓]${NC} Applications Selected: ${YELLOW}${#applications[@]}${NC} (optimized for $SYSTEM_TYPE)"
+if [[ "$ENABLE_LOGGING" == "true" ]]; then
+    echo -e "${GREEN}[✓]${NC} Logging: ${GREEN}Enabled${NC} (Level: $LOG_LEVEL)"
+fi
+echo ""
+log_message "INFO" "System detection complete: Type=$SYSTEM_TYPE, Gaming=$GAMING_MODE, Apps=${#applications[@]}"
+
 # Check if Flatpak is installed
 if ! command -v flatpak &> /dev/null; then
     echo -e "${RED}[ERROR]${NC} Flatpak is not installed on this system."
     echo -e "${YELLOW}[INFO]${NC} Please install Flatpak first before running this script."
+    log_message "ERROR" "Flatpak not found on system"
     exit 1
 else
     echo -e "${GREEN}[✓]${NC} Flatpak detected and ready"
+    log_message "INFO" "Flatpak installation verified"
 fi
 
 # Check if Flathub repository is added
 echo -e "${YELLOW}[INFO]${NC} Checking Flathub repository..."
+log_message "DEBUG" "Checking Flathub repository configuration"
 if ! flatpak remotes | grep -q "flathub"; then
     echo -e "${YELLOW}[INFO]${NC} Adding Flathub repository..."
+    log_message "INFO" "Adding Flathub repository"
     flatpak remote-add --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo
     echo -e "${GREEN}[✓]${NC} Flathub repository added"
+    log_message "INFO" "Flathub repository successfully added"
 else
     echo -e "${GREEN}[✓]${NC} Flathub repository already configured"
+    log_message "DEBUG" "Flathub repository already configured"
 fi
 
 # Check available storage space
