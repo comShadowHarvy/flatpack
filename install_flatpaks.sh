@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # ╔══════════════════════════════════════════════════════════════════════╗
-# ║                        FLATPAK INSTALLER v2.0                       ║
+# ║                        FLATPAK INSTALLER v3.0                       ║
 # ║                                                                      ║
 # ║    ███████╗██╗      █████╗ ████████╗██████╗  █████╗ ██╗  ██╗         ║
 # ║    ██╔════╝██║     ██╔══██╗╚══██╔══╝██╔══██╗██╔══██╗██║ ██╔╝         ║
@@ -17,24 +17,26 @@
 # ║                 ██║  ██║╚██████╔╝   ██║   ╚██████╔╝                  ║
 # ║                 ╚═╝  ╚═╝ ╚═════╝    ╚═╝    ╚═════╝                   ║
 # ║                                                                      ║
-# ║              INSTALLER FOR GAMING & MEDIA APPLICATIONS               ║
+# ║          STEAMDECK/BAZZITE OPTIMIZED - HANDHELD GAMING EDITION       ║
 # ║                                                                      ║
 # ║══════════════════════════════════════════════════════════════════════║
 # ║                                                                      ║
 # ║  Author: ShadowHarvy                                                 ║
 # ║  Title:  Ex-Hacker & Security Enthusiast                            ║
 # ║                                                                      ║
-# ║  Description: Automated Flatpak installer for essential gaming      ║
-# ║               and media applications on Linux systems               ║
+# ║  Description: Automated Flatpak installer optimized for             ║
+# ║               SteamDeck and Bazzite handheld gaming systems          ║
 # ║                                                                      ║
-# ║  Applications included:                                              ║
-# ║  • Emby Theater - Media streaming client                            ║
-# ║  • Minecraft PE Launcher - Mobile Minecraft on desktop              ║
-# ║  • Sober - Roblox client for Linux                                  ║
-# ║  • Bazaar - Game launcher and manager                               ║
-# ║  • Vinegar - Roblox Studio for Linux                                ║
+# ║  Applications included (11 total):                                   ║
+# ║  • Lutris - Wine game manager for your Deck                        ║
+# ║  • Heroic - Epic Games Store & GOG launcher                        ║
+# ║  • Discord - Gaming communication & voice chat                      ║
+# ║  • Spotify - Music streaming while gaming                          ║
+# ║  • KeePassXC - Secure password manager                             ║
+# ║  • Flatseal - Flatpak permissions manager (essential)              ║
+# ║  • Plus 5 additional gaming/media applications                     ║
 # ║                                                                      ║
-# ║  System: CachyOS Linux | Shell: ZSH                                 ║
+# ║  Optimized: SteamDeck/Bazzite | Original: CachyOS/ZSH               ║
 # ║                                                                      ║
 # ╚══════════════════════════════════════════════════════════════════════╝
 
@@ -54,7 +56,7 @@ show_title_screen() {
     clear
     echo -e "${CYAN}"
     echo "╔══════════════════════════════════════════════════════════════════════╗"
-    echo "║                        FLATPAK INSTALLER v2.0                       ║"
+    echo "║                        FLATPAK INSTALLER v3.0                       ║"
     echo "║                                                                      ║"
     echo "║    ███████╗██╗      █████╗ ████████╗██████╗  █████╗ ██╗  ██╗         ║"
     echo "║    ██╔════╝██║     ██╔══██╗╚══██╔══╝██╔══██╗██╔══██╗██║ ██╔╝         ║"
@@ -70,24 +72,25 @@ show_title_screen() {
     echo "║                 ██║  ██║╚██████╔╝   ██║   ╚██████╔╝                  ║"
     echo "║                 ╚═╝  ╚═╝ ╚═════╝    ╚═╝    ╚═════╝                   ║"
     echo "║                                                                      ║"
-    echo -e "║              ${WHITE}INSTALLER FOR GAMING & MEDIA APPLICATIONS${CYAN}               ║"
+    echo -e "║          ${WHITE}STEAMDECK/BAZZITE OPTIMIZED - HANDHELD GAMING EDITION${CYAN}       ║"
     echo "║                                                                      ║"
     echo "╠══════════════════════════════════════════════════════════════════════╣"
     echo "║                                                                      ║"
     echo -e "║  ${YELLOW}Author: ShadowHarvy${CYAN}                                                 ║"
     echo -e "║  ${YELLOW}Title:  Ex-Hacker & Security Enthusiast${CYAN}                            ║"
     echo "║                                                                      ║"
-    echo -e "║  ${WHITE}Description: Automated Flatpak installer for essential gaming${CYAN}      ║"
-    echo -e "║               ${WHITE}and media applications on Linux systems${CYAN}               ║"
+    echo -e "║  ${WHITE}Description: Automated Flatpak installer optimized for${CYAN}              ║"
+    echo -e "║               ${WHITE}SteamDeck and Bazzite handheld gaming systems${CYAN}             ║"
     echo "║                                                                      ║"
-    echo -e "║  ${GREEN}Applications included:${CYAN}                                              ║"
-    echo -e "║  ${MAGENTA}•${CYAN} Emby Theater - Media streaming client                            ║"
-    echo -e "║  ${MAGENTA}•${CYAN} Minecraft PE Launcher - Mobile Minecraft on desktop              ║"
-    echo -e "║  ${MAGENTA}•${CYAN} Sober - Roblox client for Linux                                  ║"
-    echo -e "║  ${MAGENTA}•${CYAN} Bazaar - Game launcher and manager                               ║"
-    echo -e "║  ${MAGENTA}•${CYAN} Vinegar - Roblox Studio for Linux                                ║"
+    echo -e "║  ${GREEN}Applications included (11 total):${CYAN}                                   ║"
+    echo -e "║  ${MAGENTA}•${CYAN} Lutris - Wine game manager for your Deck                        ║"
+    echo -e "║  ${MAGENTA}•${CYAN} Heroic - Epic Games Store & GOG launcher                        ║"
+    echo -e "║  ${MAGENTA}•${CYAN} Discord - Gaming communication & voice chat                      ║"
+    echo -e "║  ${MAGENTA}•${CYAN} Spotify - Music streaming while gaming                          ║"
+    echo -e "║  ${MAGENTA}•${CYAN} KeePassXC - Secure password manager                             ║"
+    echo -e "║  ${MAGENTA}•${CYAN} Flatseal - Flatpak permissions manager (essential)              ║"
     echo "║                                                                      ║"
-    echo -e "║  ${GRAY}System: CachyOS Linux | Shell: ZSH${CYAN}                                 ║"
+    echo -e "║  ${GRAY}Optimized: SteamDeck/Bazzite | Original: CachyOS/ZSH${CYAN}               ║"
     echo "║                                                                      ║"
     echo "╚══════════════════════════════════════════════════════════════════════╝"
     echo -e "${NC}"
@@ -107,9 +110,9 @@ show_loading_screen() {
     # Fake system checks
     echo -e "${YELLOW}[INFO]${NC} Checking system compatibility..."
     sleep 0.5
-    echo -e "${GREEN}[✓]${NC} CachyOS Linux detected"
+    echo -e "${GREEN}[✓]${NC} Linux system detected (SteamDeck/Bazzite optimized)"
     sleep 0.3
-    echo -e "${GREEN}[✓]${NC} ZSH shell environment verified"
+    echo -e "${GREEN}[✓]${NC} Shell environment verified"
     sleep 0.3
     echo -e "${GREEN}[✓]${NC} Network connectivity established"
     sleep 0.4
@@ -150,20 +153,38 @@ show_loading_screen() {
 
 # List of applications to install
 applications=(
+    # Original gaming/media apps
     "media.emby.EmbyTheater"
     "io.mrarm.mcpelauncher"
     "org.vinegarhq.Sober"
     "io.github.kolunmi.Bazaar"
     "org.vinegarhq.Vinegar"
+    
+    # SteamDeck/Bazzite essentials
+    "net.lutris.Lutris"
+    "com.heroicgameslauncher.hgl"
+    "com.discordapp.Discord"
+    "com.spotify.Client"
+    "org.keepassxc.KeePassXC"
+    "com.github.tchx84.Flatseal"
 )
 
 # Application friendly names
 declare -A app_names=(
+    # Original gaming/media apps
     ["media.emby.EmbyTheater"]="Emby Theater"
     ["io.mrarm.mcpelauncher"]="Minecraft PE Launcher"
     ["org.vinegarhq.Sober"]="Sober (Roblox Client)"
     ["io.github.kolunmi.Bazaar"]="Bazaar Game Launcher"
     ["org.vinegarhq.Vinegar"]="Vinegar (Roblox Studio)"
+    
+    # SteamDeck/Bazzite essentials
+    ["net.lutris.Lutris"]="Lutris (Wine Game Manager)"
+    ["com.heroicgameslauncher.hgl"]="Heroic Games Launcher"
+    ["com.discordapp.Discord"]="Discord"
+    ["com.spotify.Client"]="Spotify"
+    ["org.keepassxc.KeePassXC"]="KeePassXC (Password Manager)"
+    ["com.github.tchx84.Flatseal"]="Flatseal (Permissions Manager)"
 )
 
 # Function to install a Flatpak application

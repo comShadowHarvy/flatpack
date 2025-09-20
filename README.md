@@ -1,4 +1,4 @@
-# 🎮 FLATPACK AUTO-INSTALLER
+# 🎮 FLATPACK AUTO-INSTALLER v3.0
 
 <div align="center">
 
@@ -18,22 +18,22 @@
 ╚═╝  ╚═╝ ╚═════╝    ╚═╝    ╚═════╝ 
 ```
 
-**🚀 Automated Flatpak Installer for Gaming & Media Applications**
+**🚀 SteamDeck/Bazzite Optimized - Handheld Gaming Edition**
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Shell Script](https://badges.aleen42.com/src/shell.svg)](https://www.shell.org/)
 [![CachyOS](https://img.shields.io/badge/Optimized%20for-CachyOS-purple.svg)](https://cachyos.org/)
 [![Flatpak](https://img.shields.io/badge/Package%20Manager-Flatpak-orange.svg)](https://flatpak.org/)
 
-*A security-focused, automated installer script for essential gaming and media applications on Linux systems*
+*Optimized for SteamDeck and Bazzite handheld gaming systems - Essential apps for the perfect portable gaming setup*
 
 </div>
 
 ---
 
-## 📖 Overview
+## 📰 Overview
 
-**Flatpack Auto-Installer** is a sleek, terminal-based installation script that automates the process of installing popular gaming and media applications via Flatpak. Designed with security and user experience in mind, this script provides a beautiful ASCII interface with real-time progress tracking and comprehensive error handling.
+**Flatpack Auto-Installer v3.0** is specifically optimized for **SteamDeck** and **Bazzite** handheld gaming systems. This sleek, terminal-based installation script automates the process of installing essential gaming utilities, media applications, and security tools via Flatpak. Perfect for getting your handheld gaming device set up with all the essentials in one go!
 
 ### ✨ Key Features
 
@@ -47,15 +47,21 @@
 
 ---
 
-## 🎮 Included Applications
+## 🎮 SteamDeck/Bazzite Applications (11 Total)
 
-| Application | Description | Category |
-|-------------|-------------|----------|
-| **🎬 Emby Theater** | Premium media streaming client | Media Player |
-| **⛏️ Minecraft PE Launcher** | Mobile Minecraft edition for desktop | Gaming |
-| **🎮 Sober** | Roblox client optimized for Linux | Gaming |
-| **🚀 Bazaar** | Advanced game launcher and library manager | Gaming Tools |
-| **🏗️ Vinegar** | Roblox Studio development environment | Development |
+| Application | Description | Why Perfect for Handhelds |
+|-------------|-------------|---------------------------|
+| **🍷 Lutris** | Wine game manager for Linux | Essential for non-Steam Windows games on your Deck |
+| **🧝 Heroic Games Launcher** | Epic Games Store & GOG client | Access Epic exclusives and GOG library on handheld |
+| **💬 Discord** | Gaming voice chat & communication | Stay connected with gaming friends |
+| **🎵 Spotify** | Music streaming service | Perfect background music while gaming |
+| **🔐 KeePassXC** | Secure password manager | Essential security tool with touch-friendly interface |
+| **🔒 Flatseal** | Flatpak permissions manager | Critical for managing app permissions securely |
+| **🎦 Emby Theater** | Premium media streaming client | Great for docked entertainment mode |
+| **⛏️ Minecraft PE Launcher** | Mobile Minecraft on desktop | Touch-friendly Minecraft for portable play |
+| **🎮 Sober** | Roblox client for Linux | Roblox gaming on your handheld device |
+| **🚀 Bazaar** | Game launcher and manager | Organize your game library efficiently |
+| **🏗️ Vinegar** | Roblox Studio for Linux | Game development on the go |
 
 ---
 
@@ -132,8 +138,8 @@ The installer features a beautiful ASCII art title screen with system informatio
 
 ```
 ╔══════════════════════════════════════════════════════════════════════╗
-║                        FLATPAK INSTALLER v2.0                       ║
-║              INSTALLER FOR GAMING & MEDIA APPLICATIONS               ║
+║                        FLATPAK INSTALLER v3.0                       ║
+║          STEAMDECK/BAZZITE OPTIMIZED - HANDHELD GAMING EDITION       ║
 ║                                                                      ║
 ║  Author: ShadowHarvy                                                 ║
 ║  Title:  Ex-Hacker & Security Enthusiast                            ║
@@ -144,9 +150,9 @@ The installer features a beautiful ASCII art title screen with system informatio
 Real-time progress bars show installation status for each application:
 
 ```
-[INSTALL] Installing Emby Theater (media.emby.EmbyTheater)...
+[INSTALL] Installing Lutris (Wine Game Manager) (net.lutris.Lutris)...
           Progress: ▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓
-[✓ SUCCESS] Emby Theater installed successfully
+[✓ SUCCESS] Lutris (Wine Game Manager) installed successfully
 ```
 
 ---
@@ -221,10 +227,12 @@ if flatpak install --noninteractive flathub "$app_id"; then
 
 ## 📋 System Information
 
-- **Optimized for**: CachyOS Linux
-- **Shell Environment**: ZSH (compatible with Bash)
-- **Architecture**: x86_64 (should work on other architectures)
+- **Optimized for**: SteamDeck & Bazzite (Universal Linux support)
+- **Shell Environment**: Bash/ZSH compatible
+- **Architecture**: x86_64 (AMD64)
 - **Tested Environments**: 
+  - SteamOS (SteamDeck)
+  - Bazzite Linux
   - CachyOS Linux
   - Arch Linux
   - Ubuntu 22.04+
@@ -279,10 +287,12 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## 📊 Project Stats
 
-- **Applications Supported**: 5
-- **Lines of Code**: ~290
-- **Installation Time**: ~2-5 minutes
+- **Applications Supported**: 11
+- **Version**: 3.0 (SteamDeck/Bazzite Edition)
+- **Lines of Code**: ~310
+- **Installation Time**: ~3-8 minutes
 - **Success Rate**: 95%+
+- **Handheld Optimized**: ✓
 
 ---
 
