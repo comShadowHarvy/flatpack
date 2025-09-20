@@ -1,305 +1,432 @@
-# 🎮 FLATPACK AUTO-INSTALLER v3.0
+# 🚀 Flatpack Auto-Installer v3.0
 
 <div align="center">
 
-```
-███████╗██╗      █████╗ ████████╗██████╗  █████╗ ██╗  ██╗
-██╔════╝██║     ██╔══██╗╚══██╔══╝██╔══██╗██╔══██╗██║ ██╔╝
-█████╗  ██║     ███████║   ██║   ██████╔╝███████║█████╔╝ 
-██╔══╝  ██║     ██╔══██║   ██║   ██╔═══╝ ██╔══██║██╔═██╗ 
-██║     ███████╗██║  ██║   ██║   ██║     ██║  ██║██║  ██╗
-╚═╝     ╚══════╝╚═╝  ╚═╝   ╚═╝   ╚═╝     ╚═╝  ╚═╝╚═╝  ╚═╝
+![Flatpack Logo](https://img.shields.io/badge/Flatpack-Auto--Installer-blue?style=for-the-badge&logo=linux)
+![Version](https://img.shields.io/badge/version-3.0-green?style=for-the-badge)
+![License](https://img.shields.io/badge/license-MIT-yellow?style=for-the-badge)
+![Platform](https://img.shields.io/badge/platform-Linux-red?style=for-the-badge&logo=linux)
 
- █████╗ ██╗   ██╗████████╗ ██████╗ 
-██╔══██╗██║   ██║╚══██╔══╝██╔═══██╗
-███████║██║   ██║   ██║   ██║   ██║
-██╔══██║██║   ██║   ██║   ██║   ██║
-██║  ██║╚██████╔╝   ██║   ╚██████╔╝
-╚═╝  ╚═╝ ╚═════╝    ╚═╝    ╚═════╝ 
-```
+**🎮 SteamDeck & Bazzite Optimized Flatpak Installer**
 
-**🚀 SteamDeck/Bazzite Optimized - Handheld Gaming Edition**
+*Automated, secure, and intelligent Flatpak application installer designed specifically for handheld gaming systems*
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![Shell Script](https://badges.aleen42.com/src/shell.svg)](https://www.shell.org/)
-[![CachyOS](https://img.shields.io/badge/Optimized%20for-CachyOS-purple.svg)](https://cachyos.org/)
-[![Flatpak](https://img.shields.io/badge/Package%20Manager-Flatpak-orange.svg)](https://flatpak.org/)
-
-*Optimized for SteamDeck and Bazzite handheld gaming systems - Essential apps for the perfect portable gaming setup*
+[Features](#-features) • [Installation](#-installation) • [Usage](#-usage) • [Configuration](#-configuration) • [Troubleshooting](#-troubleshooting)
 
 </div>
 
 ---
 
-## 📰 Overview
+## 📋 Table of Contents
 
-**Flatpack Auto-Installer v3.0** is specifically optimized for **SteamDeck** and **Bazzite** handheld gaming systems. This sleek, terminal-based installation script automates the process of installing essential gaming utilities, media applications, and security tools via Flatpak. Perfect for getting your handheld gaming device set up with all the essentials in one go!
+- [Overview](#-overview)
+- [Features](#-features)
+- [Quick Start](#-quick-start)
+- [Installation](#-installation)
+- [Usage](#-usage)
+- [Configuration](#-configuration)
+- [Applications Included](#-applications-included)
+- [Advanced Features](#-advanced-features)
+- [Troubleshooting](#-troubleshooting)
+- [Contributing](#-contributing)
+- [License](#-license)
+- [Author](#-author)
 
-### ✨ Key Features
+## 🎯 Overview
 
-- 🎨 **Beautiful ASCII Interface** - Eye-catching terminal graphics with color-coded output
-- 🔒 **Security-Focused** - Built with security best practices and sandboxing support
-- ⚡ **Automated Installation** - One-click installation of multiple applications
-- 📊 **Real-time Progress** - Visual progress bars and status indicators  
-- 🛡️ **Error Handling** - Comprehensive error detection and reporting
-- 🎯 **Smart Dependencies** - Automatic Flathub repository configuration
-- 📱 **Cross-Platform** - Works on any Linux distribution with Flatpak support
+**Flatpack Auto-Installer** is a sophisticated bash script designed to automate the installation of essential Flatpak applications on Linux systems, with special optimization for **SteamDeck** and **Bazzite** handheld gaming platforms.
 
----
+Created by **ShadowHarvy** (Ex-Hacker & Security Enthusiast), this tool focuses on:
+- 🔒 **Security-first approach** with sandboxed applications
+- 🎮 **Gaming-optimized** application selection
+- 🚀 **Intelligent installation** with retry logic and parallel processing
+- 📊 **State management** with resume capability
+- ⚙️ **Highly configurable** with extensive customization options
 
-## 🎮 SteamDeck/Bazzite Applications (11 Total)
+## ✨ Features
 
-| Application | Description | Why Perfect for Handhelds |
-|-------------|-------------|---------------------------|
-| **🍷 Lutris** | Wine game manager for Linux | Essential for non-Steam Windows games on your Deck |
-| **🧝 Heroic Games Launcher** | Epic Games Store & GOG client | Access Epic exclusives and GOG library on handheld |
-| **💬 Discord** | Gaming voice chat & communication | Stay connected with gaming friends |
-| **🎵 Spotify** | Music streaming service | Perfect background music while gaming |
-| **🔐 KeePassXC** | Secure password manager | Essential security tool with touch-friendly interface |
-| **🔒 Flatseal** | Flatpak permissions manager | Critical for managing app permissions securely |
-| **🎦 Emby Theater** | Premium media streaming client | Great for docked entertainment mode |
-| **⛏️ Minecraft PE Launcher** | Mobile Minecraft on desktop | Touch-friendly Minecraft for portable play |
-| **🎮 Sober** | Roblox client for Linux | Roblox gaming on your handheld device |
-| **🚀 Bazaar** | Game launcher and manager | Organize your game library efficiently |
-| **🏗️ Vinegar** | Roblox Studio for Linux | Game development on the go |
+### 🎮 Core Features
+- **11 Curated Applications** - Hand-picked for gaming and productivity
+- **SteamDeck/Bazzite Optimized** - Tailored for handheld gaming systems  
+- **One-Command Installation** - Simple execution with intelligent automation
+- **Security Focused** - Only uses official Flathub repository
 
----
+### 🚀 Advanced Features
+- **Parallel Installation** - Concurrent app installations for faster completion
+- **State Persistence** - Resume interrupted installations
+- **Smart Skip Logic** - Automatically skip already installed applications
+- **Retry Mechanism** - Configurable retry attempts for failed installations
+- **Progress Tracking** - Real-time installation progress with visual indicators
+- **Storage Validation** - Pre-flight disk space checking
+- **Configuration System** - Extensive customization via config files
 
-## 🔧 Prerequisites
+### 🛠️ Technical Features
+- **Error Recovery** - Intelligent handling of installation failures
+- **Detailed Logging** - Comprehensive installation tracking
+- **Clean Installation** - Automatic cleanup of temporary files
+- **Exit Codes** - Proper exit status for scripting integration
+- **Color-Coded Output** - Enhanced readability with ANSI color support
 
-Before running the installer, ensure your system meets these requirements:
+## ⚡ Quick Start
 
-- **Linux Distribution**: Any modern Linux distro
-- **Package Manager**: Flatpak installed and configured
-- **Shell**: Bash or compatible shell
-- **Network**: Active internet connection
-- **Permissions**: User account with installation privileges
-
-### Installing Flatpak
-
-If Flatpak isn't installed on your system:
-
-**Ubuntu/Debian:**
 ```bash
-sudo apt install flatpak
+# Clone and run in one command
+curl -sSL https://raw.githubusercontent.com/comShadowHarvy/flatpack/main/install_flatpaks.sh | bash
 ```
 
-**Fedora:**
+Or for more control:
+
 ```bash
-sudo dnf install flatpak
+# Clone repository
+git clone https://github.com/comShadowHarvy/flatpack.git
+cd flatpack
+
+# Make executable and run
+chmod +x install_flatpaks.sh
+./install_flatpaks.sh
 ```
 
-**Arch/CachyOS:**
+## 📥 Installation
+
+### Prerequisites
+
+- **Linux System** (SteamDeck, Bazzite, or any modern Linux distribution)
+- **Flatpak** installed and configured
+- **Internet connection** for downloading applications
+- **2GB+ free disk space** (recommended)
+
+### Method 1: Direct Download & Execute
 ```bash
-sudo pacman -S flatpak
+# Download and execute directly
+wget https://raw.githubusercontent.com/comShadowHarvy/flatpack/main/install_flatpaks.sh
+chmod +x install_flatpaks.sh
+./install_flatpaks.sh
 ```
 
-**openSUSE:**
+### Method 2: Git Clone
 ```bash
-sudo zypper install flatpak
+# Clone repository
+git clone https://github.com/comShadowHarvy/flatpack.git
+cd flatpack
+chmod +x install_flatpaks.sh
+./install_flatpaks.sh
 ```
 
----
-
-## 🚀 Installation & Usage
-
-### Quick Start
-
-1. **Clone the repository:**
-   ```bash
-   git clone https://github.com/comShadowHarvy/flatpack.git
-   cd flatpack
-   ```
-
-2. **Make the script executable:**
-   ```bash
-   chmod +x install_flatpaks.sh
-   ```
-
-3. **Run the installer:**
-   ```bash
-   ./install_flatpaks.sh
-   ```
-
-### What Happens During Installation
-
-1. **🔍 System Check** - Verifies Flatpak installation and system compatibility
-2. **🛡️ Security Scan** - Checks firewall, package verification, and sandboxing
-3. **📦 Repository Setup** - Configures Flathub repository if needed
-4. **⬇️ Application Download** - Downloads and installs selected applications
-5. **📋 Summary Report** - Provides detailed installation results
-
----
-
-## 🖼️ Screenshots
-
-### Title Screen
-The installer features a beautiful ASCII art title screen with system information:
-
-```
-╔══════════════════════════════════════════════════════════════════════╗
-║                        FLATPAK INSTALLER v3.0                       ║
-║          STEAMDECK/BAZZITE OPTIMIZED - HANDHELD GAMING EDITION       ║
-║                                                                      ║
-║  Author: ShadowHarvy                                                 ║
-║  Title:  Ex-Hacker & Security Enthusiast                            ║
-╚══════════════════════════════════════════════════════════════════════╝
-```
-
-### Installation Progress
-Real-time progress bars show installation status for each application:
-
-```
-[INSTALL] Installing Lutris (Wine Game Manager) (net.lutris.Lutris)...
-          Progress: ▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓
-[✓ SUCCESS] Lutris (Wine Game Manager) installed successfully
-```
-
----
-
-## 🛠️ Customization
-
-### Adding New Applications
-
-To add new Flatpak applications to the installer:
-
-1. **Edit the applications array** in `install_flatpaks.sh`:
-   ```bash
-   applications=(
-       "media.emby.EmbyTheater"
-       "io.mrarm.mcpelauncher"
-       "your.new.application"  # Add here
-   )
-   ```
-
-2. **Add friendly names** to the associative array:
-   ```bash
-   declare -A app_names=(
-       ["your.new.application"]="Your App Name"
-   )
-   ```
-
-### Customizing Colors
-
-Color definitions are at the top of the script:
+### Method 3: One-Liner (Recommended for SteamDeck)
 ```bash
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[0;33m'
-# Modify these to change the color scheme
+# Execute directly from GitHub
+bash <(curl -s https://raw.githubusercontent.com/comShadowHarvy/flatpack/main/install_flatpaks.sh)
 ```
 
----
+## 🎯 Usage
 
-## 🔧 Troubleshooting
+### Basic Usage
+```bash
+# Run with default settings
+./install_flatpaks.sh
+```
+
+### Advanced Usage
+```bash
+# Check what would be installed (dry-run mode coming soon)
+./install_flatpaks.sh --dry-run
+
+# Run with verbose output
+VERBOSE_OUTPUT=true ./install_flatpaks.sh
+
+# Run with custom parallel jobs
+PARALLEL_JOBS=5 ./install_flatpaks.sh
+```
+
+### Interactive Features
+
+The script provides several interactive prompts:
+
+1. **Welcome Screen** - Overview and confirmation to proceed
+2. **Storage Check** - Warning if disk space is low with option to continue
+3. **Resume Option** - Offer to resume from previous failed installations
+4. **Installation Progress** - Real-time progress indicators
+
+## ⚙️ Configuration
+
+### Configuration File Location
+```
+~/.config/flatpack/config.conf
+```
+
+### Default Configuration
+```bash
+# Installation settings
+MAX_RETRIES=3                    # Number of retry attempts for failed installations
+REQUIRED_SPACE=2000000          # Required disk space in KB (2GB)
+SKIP_ALREADY_INSTALLED=true     # Skip apps that are already installed
+
+# Post-installation options  
+CREATE_DESKTOP_SHORTCUTS=false  # Create desktop shortcuts for installed apps
+
+# Advanced settings
+PARALLEL_JOBS=1                 # Number of parallel installation jobs (1=sequential)
+VERBOSE_OUTPUT=false            # Show detailed installation output
+
+# Custom applications (space-separated Flatpak IDs)
+CUSTOM_APPS=""                  # Add your own Flatpak application IDs here
+```
+
+### Configuration Options
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `MAX_RETRIES` | Integer | 3 | Number of retry attempts for failed installations |
+| `REQUIRED_SPACE` | Integer | 2000000 | Required disk space in KB (2GB default) |
+| `SKIP_ALREADY_INSTALLED` | Boolean | true | Skip applications that are already installed |
+| `CREATE_DESKTOP_SHORTCUTS` | Boolean | false | Create desktop shortcuts after installation |
+| `PARALLEL_JOBS` | Integer | 1 | Number of concurrent installation jobs |
+| `VERBOSE_OUTPUT` | Boolean | false | Show detailed installation output |
+| `CUSTOM_APPS` | String | "" | Space-separated list of additional Flatpak IDs to install |
+
+### Environment Variables
+
+You can also override settings using environment variables:
+```bash
+# Override parallel jobs
+PARALLEL_JOBS=5 ./install_flatpaks.sh
+
+# Enable verbose output
+VERBOSE_OUTPUT=true ./install_flatpaks.sh
+
+# Skip already installed apps
+SKIP_ALREADY_INSTALLED=false ./install_flatpaks.sh
+```
+
+## 📱 Applications Included
+
+### 🎮 Gaming Applications
+| Application | Flatpak ID | Description |
+|-------------|------------|-------------|
+| **Lutris** | `net.lutris.Lutris` | Wine game manager - Run Windows games on Linux |
+| **Heroic Games Launcher** | `com.heroicgameslauncher.hgl` | Epic Games Store & GOG launcher |
+| **Minecraft PE Launcher** | `io.mrarm.mcpelauncher` | Minecraft Pocket Edition launcher |
+| **Sober (Roblox)** | `org.vinegarhq.Sober` | Unofficial Roblox client |
+| **Vinegar (Roblox Studio)** | `org.vinegarhq.Vinegar` | Unofficial Roblox Studio client |
+| **Bazaar** | `io.github.kolunmi.Bazaar` | Game launcher and manager |
+
+### 🎵 Media & Communication
+| Application | Flatpak ID | Description |
+|-------------|------------|-------------|
+| **Discord** | `com.discordapp.Discord` | Gaming communication & voice chat |
+| **Spotify** | `com.spotify.Client` | Music streaming service |
+| **Emby Theater** | `media.emby.EmbyTheater` | Media center client |
+
+### 🔧 Utilities & Security
+| Application | Flatpak ID | Description |
+|-------------|------------|-------------|
+| **KeePassXC** | `org.keepassxc.KeePassXC` | Secure password manager |
+| **Flatseal** | `com.github.tchx84.Flatseal` | Flatpak permissions manager (essential!) |
+
+## 🚀 Advanced Features
+
+### State Management
+
+The script maintains installation state for resumption capability:
+
+```bash
+# State file location
+~/.local/share/flatpack/install_state.json
+```
+
+**Features:**
+- Automatic state saving after each installation batch
+- Resume from failed installations
+- Skip previously successful installations
+- Automatic cleanup when all installations complete
+
+### Parallel Processing
+
+Enable parallel installations for faster completion:
+
+```bash
+# Install up to 3 applications concurrently
+PARALLEL_JOBS=3 ./install_flatpaks.sh
+```
+
+**Benefits:**
+- Significantly faster installation times
+- Better resource utilization
+- Intelligent job management
+- Real-time progress tracking
+
+### Progress Tracking
+
+The script provides detailed progress information:
+- Real-time installation status
+- Progress indicators (D=Download, I=Install, R=Resolve, F=Fetch, Δ=Delta)
+- Percentage completion when available
+- Estimated completion times
+
+### Error Handling
+
+Comprehensive error recovery system:
+- Configurable retry attempts
+- Detailed error reporting
+- Graceful failure handling
+- Resume capability for interrupted installations
+
+## 🐛 Troubleshooting
 
 ### Common Issues
 
-**Issue**: "Flatpak is not installed"
-```
-Solution: Install Flatpak using your system's package manager
+#### Issue: "Flatpak not found"
+```bash
+# Install Flatpak first
+# Ubuntu/Debian:
+sudo apt install flatpak
+
+# Fedora:
+sudo dnf install flatpak
+
+# Arch/CachyOS:
+sudo pacman -S flatpak
 ```
 
-**Issue**: "Failed to install application"
-```
-Solution: Check internet connection and try manual installation:
-flatpak install flathub <application-id>
-```
-
-**Issue**: "Permission denied"
-```
-Solution: Make the script executable:
+#### Issue: "Permission denied"
+```bash
+# Make script executable
 chmod +x install_flatpaks.sh
+```
+
+#### Issue: "Insufficient disk space"
+```bash
+# Check available space
+df -h
+
+# Clean up if needed
+flatpak uninstall --unused
+flatpak repair
+```
+
+#### Issue: "Installation failed repeatedly"
+```bash
+# Try manual installation to identify issue
+flatpak install flathub <application-id>
+
+# Update Flatpak
+sudo flatpak update
+
+# Refresh repositories
+flatpak remote-modify --enable flathub
 ```
 
 ### Debug Mode
 
-For verbose output, you can modify the script to show detailed installation logs:
+Enable verbose output for debugging:
 ```bash
-# Replace this line:
-if flatpak install --noninteractive flathub "$app_id" &> /dev/null; then
-
-# With this:
-if flatpak install --noninteractive flathub "$app_id"; then
+VERBOSE_OUTPUT=true ./install_flatpaks.sh
 ```
 
----
+### Reset Configuration
 
-## 📋 System Information
+To reset to default configuration:
+```bash
+# Remove config file to regenerate defaults
+rm ~/.config/flatpack/config.conf
+./install_flatpaks.sh
+```
 
-- **Optimized for**: SteamDeck & Bazzite (Universal Linux support)
-- **Shell Environment**: Bash/ZSH compatible
-- **Architecture**: x86_64 (AMD64)
-- **Tested Environments**: 
-  - SteamOS (SteamDeck)
-  - Bazzite Linux
-  - CachyOS Linux
-  - Arch Linux
-  - Ubuntu 22.04+
-  - Fedora 38+
+### Clear Installation State
 
----
+To start fresh (ignore previous state):
+```bash
+# Remove state file
+rm ~/.local/share/flatpack/install_state.json
+./install_flatpaks.sh
+```
 
 ## 🤝 Contributing
 
 We welcome contributions! Here's how you can help:
 
-1. **🍴 Fork** the repository
-2. **🌿 Create** a feature branch (`git checkout -b feature/AmazingFeature`)
-3. **💾 Commit** your changes (`git commit -m 'Add some AmazingFeature'`)
-4. **📤 Push** to the branch (`git push origin feature/AmazingFeature`)
-5. **🔄 Open** a Pull Request
+### Reporting Issues
+- Use GitHub Issues for bug reports
+- Include system information (OS, Flatpak version)
+- Provide error messages and logs
+- Describe steps to reproduce
 
-### Contribution Ideas
+### Feature Requests
+- Check existing issues first
+- Provide detailed description of the feature
+- Explain the use case and benefits
+- Consider implementation complexity
 
-- 📱 Add more gaming applications
-- 🎨 Improve the ASCII art and UI
-- 🌐 Add multi-language support
-- 🔧 Create configuration file support
-- 📊 Add installation statistics
-- 🐛 Bug fixes and performance improvements
+### Code Contributions
+1. Fork the repository
+2. Create a feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit changes (`git commit -m 'Add amazing feature'`)
+4. Push to branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
 
----
+### Application Suggestions
+- Suggest new applications via GitHub Issues
+- Include Flatpak ID and description
+- Explain why it fits the gaming/handheld focus
+- Consider security and stability
 
 ## 📄 License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
+```
+MIT License
+
+Copyright (c) 2024 ShadowHarvy
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+```
+
+## 👨‍💻 Author
+
+**ShadowHarvy**  
+*Ex-Hacker & Security Enthusiast*
+
+- 🌐 **Focus**: Security-first automation tools
+- 🎮 **Specialty**: Gaming system optimization
+- 🔧 **Philosophy**: Intelligent automation with user control
+- 🔒 **Approach**: Security and reliability above all
+
 ---
 
-## 👤 Author
+## 🌟 Support the Project
 
-**ShadowHarvy**
-- *Title*: Ex-Hacker & Security Enthusiast  
-- *Specialties*: Linux Security, Automation, Gaming on Linux
-- *System*: CachyOS Linux | ZSH Environment
+If you find this project helpful:
 
----
-
-## 🙏 Acknowledgments
-
-- **Flatpak Community** - For creating an amazing packaging system
-- **Flathub** - For hosting quality applications
-- **CachyOS Team** - For the excellent Arch-based distribution
-- **Open Source Gaming Community** - For making Linux gaming possible
-
----
-
-## 📊 Project Stats
-
-- **Applications Supported**: 11
-- **Version**: 3.0 (SteamDeck/Bazzite Edition)
-- **Lines of Code**: ~310
-- **Installation Time**: ~3-8 minutes
-- **Success Rate**: 95%+
-- **Handheld Optimized**: ✓
+- ⭐ **Star the repository** on GitHub
+- 🐛 **Report issues** and suggest improvements
+- 🔄 **Share with others** who might benefit
+- 💡 **Contribute** new features or bug fixes
 
 ---
 
 <div align="center">
 
-**🎮 Happy Gaming on Linux! 🐧**
+**Made with ❤️ for the Linux Gaming Community**
 
-Made with ❤️ by the Linux Gaming Community
+*Optimized for SteamDeck & Bazzite • Inspired by CachyOS & ZSH*
+
+[⬆️ Back to top](#-flatpack-auto-installer-v30)
 
 </div>
