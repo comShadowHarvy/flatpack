@@ -101,7 +101,7 @@ sudo zypper install flatpak
 
 1. **Clone the repository:**
    ```bash
-   git clone https://github.com/yourusername/flatpack.git
+   git clone https://github.com/comShadowHarvy/flatpack.git
    cd flatpack
    ```
 
