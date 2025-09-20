@@ -1,7 +1,7 @@
 #!/bin/bash
 
-# ╔══════════════════════════════════════════════════════════════════════╗
-# ║                        FLATPAK INSTALLER v3.0                       ║
+# ╔════════════════════════════════════════════════════════════════════╗
+# ║                        FLATPAK INSTALLER v3.3                       ║
 # ║                                                                      ║
 # ║    ███████╗██╗      █████╗ ████████╗██████╗  █████╗ ██╗  ██╗         ║
 # ║    ██╔════╝██║     ██╔══██╗╚══██╔══╝██╔══██╗██╔══██╗██║ ██╔╝         ║
@@ -360,7 +360,7 @@ parse_arguments() {
 
 # Help function
 show_help() {
-    echo -e "${CYAN}Flatpack Auto-Installer v3.0 - Usage:${NC}"
+echo -e "${CYAN}Flatpack Auto-Installer v3.3 - Usage:${NC}"
     echo ""
     echo -e "${WHITE}SYNOPSIS:${NC}"
     echo -e "  $0 [OPTIONS]"
@@ -637,7 +637,7 @@ show_title_screen() {
     clear
     echo -e "${CYAN}"
     echo "╔══════════════════════════════════════════════════════════════════════╗"
-    echo "║                        FLATPAK INSTALLER v3.0                       ║"
+echo "║                        FLATPAK INSTALLER v3.3                       ║"
     echo "║                                                                      ║"
     echo "║    ███████╗██╗      █████╗ ████████╗██████╗  █████╗ ██╗  ██╗         ║"
     echo "║    ██╔════╝██║     ██╔══██╗╚══██╔══╝██╔══██╗██╔══██╗██║ ██╔╝         ║"
@@ -1093,7 +1093,7 @@ install_apps_parallel() {
 parse_arguments "$@"
 
 # Initialize logging
-log_message "INFO" "========== Flatpack Auto-Installer v3.0 Started =========="
+log_message "INFO" "========== Flatpack Auto-Installer v3.3 Started ==========="
 log_message "INFO" "System: $(uname -a)"
 log_message "INFO" "User: $(whoami)"
 log_message "INFO" "Arguments: $*"
