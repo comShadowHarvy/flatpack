@@ -68,7 +68,7 @@ DRY_RUN=false
 MAX_RETRIES=3
 REQUIRED_SPACE=2000000  # 2GB in KB
 SKIP_ALREADY_INSTALLED=true
-CREATE_DESKTOP_SHORTCUTS=false
+CREATE_DESKTOP_SHORTCUTS=true
 PARALLEL_JOBS=3  # Number of concurrent installation jobs
 VERBOSE_OUTPUT=false
 LOG_LEVEL="INFO"  # DEBUG, INFO, WARN, ERROR
@@ -160,8 +160,8 @@ load_config() {
             [[ $key =~ ^#.*$ ]] && continue
             [[ -z $key ]] && continue
             
-            # Remove quotes from value and set variable
-            value=$(echo "$value" | sed 's/^"\|"$//g')
+            # Remove quotes and comments from value and set variable
+            value=$(echo "$value" | sed 's/#.*$//' | sed 's/^["[:space:]]*//' | sed 's/["[:space:]]*$//')
             case $key in
                 MAX_RETRIES) MAX_RETRIES="$value" ;;
                 REQUIRED_SPACE) REQUIRED_SPACE="$value" ;;
@@ -431,6 +431,205 @@ show_dry_run_preview() {
     echo -e "${YELLOW}[INFO]${NC} Run without --dry-run to perform actual installation."
     
     exit 0
+}
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# PHASE 4: STEAMDECK-SPECIFIC FEATURES
+# ═══════════════════════════════════════════════════════════════════════════════
+
+# Function to create desktop shortcuts for installed apps
+create_desktop_shortcuts() {
+    local installed_apps=("$@")
+    
+    # Only create shortcuts if enabled in config
+    if [[ "$CREATE_DESKTOP_SHORTCUTS" != "true" ]]; then
+        log_message "DEBUG" "Desktop shortcuts disabled in configuration"
+        return 0
+    fi
+    
+    log_message "INFO" "Creating desktop shortcuts for ${#installed_apps[@]} applications"
+    
+    # Create Desktop directory if it doesn't exist
+    local desktop_dir="$HOME/Desktop"
+    if [[ ! -d "$desktop_dir" ]]; then
+        mkdir -p "$desktop_dir"
+        log_message "INFO" "Created Desktop directory: $desktop_dir"
+    fi
+    
+    echo -e "${CYAN}[SHORTCUTS]${NC} Creating desktop shortcuts..."
+    
+    local created_count=0
+    for app_id in "${installed_apps[@]}"; do
+        local app_name="${app_names[$app_id]}"
+        local shortcut_file="$desktop_dir/${app_name// /_}.desktop"
+        
+        # Get app info from Flatpak
+        local flatpak_info
+        if flatpak_info=$(flatpak info "$app_id" 2>/dev/null); then
+            local display_name=$(echo "$flatpak_info" | grep "Name:" | cut -d':' -f2- | sed 's/^[[:space:]]*//') 
+            local description=$(echo "$flatpak_info" | grep "Summary:" | cut -d':' -f2- | sed 's/^[[:space:]]*//') 
+            
+            # Use app name from our mapping if display name is empty
+            [[ -z "$display_name" ]] && display_name="$app_name"
+            [[ -z "$description" ]] && description="$display_name application"
+            
+            # Create .desktop file
+            cat > "$shortcut_file" << EOF
+[Desktop Entry]
+Name=$display_name
+Comment=$description
+Exec=flatpak run $app_id
+Icon=application-x-flatpak
+Terminal=false
+Type=Application
+Categories=Game;Utility;
+MimeType=
+StartupNotify=true
+X-Flatpak=$app_id
+EOF
+            
+            # Make executable
+            chmod +x "$shortcut_file"
+            
+            echo -e "  ${GREEN}✓${NC} ${app_name}"
+            log_message "INFO" "Created desktop shortcut: $shortcut_file"
+            ((created_count++))
+        else
+            echo -e "  ${YELLOW}⚠${NC} ${app_name} (could not get app info)"
+            log_message "WARN" "Failed to get info for $app_id, skipping shortcut creation"
+        fi
+    done
+    
+    if [ $created_count -gt 0 ]; then
+        echo -e "${GREEN}[✓]${NC} Created $created_count desktop shortcuts in $desktop_dir"
+        log_message "INFO" "Successfully created $created_count desktop shortcuts"
+    else
+        echo -e "${YELLOW}[INFO]${NC} No desktop shortcuts created"
+    fi
+    echo ""
+}
+
+# Function to add apps to Steam library (SteamDeck/SteamOS only)
+add_to_steam_library() {
+    local installed_apps=("$@")
+    
+    # Only run on SteamDeck/SteamOS systems
+    if [[ "$SYSTEM_TYPE" != "steamdeck" ]] && [[ "$SYSTEM_TYPE" != "steamdeck_hardware" ]]; then
+        log_message "DEBUG" "Steam integration skipped (not a SteamDeck system)"
+        return 0
+    fi
+    
+    # Check if Steam is installed
+    if ! command -v steam >/dev/null && ! command -v steamos-add-to-steam >/dev/null; then
+        log_message "WARN" "Steam not found, cannot add apps to Steam library"
+        return 0
+    fi
+    
+    log_message "INFO" "Adding ${#installed_apps[@]} applications to Steam library"
+    echo -e "${CYAN}[STEAM]${NC} Adding applications to Steam library..."
+    
+    local added_count=0
+    for app_id in "${installed_apps[@]}"; do
+        local app_name="${app_names[$app_id]}"
+        
+        # Try using steamos-add-to-steam if available
+        if command -v steamos-add-to-steam >/dev/null; then
+            if steamos-add-to-steam "flatpak run $app_id" --name "$app_name" --icon "application-x-flatpak" 2>/dev/null; then
+                echo -e "  ${GREEN}✓${NC} ${app_name} (via steamos-add-to-steam)"
+                log_message "INFO" "Added $app_name to Steam via steamos-add-to-steam"
+                ((added_count++))
+            else
+                log_message "WARN" "Failed to add $app_name via steamos-add-to-steam"
+            fi
+        else
+            # Manual Steam shortcut creation (fallback)
+            local steam_dir="$HOME/.steam/steam/userdata"
+            if [[ -d "$steam_dir" ]]; then
+                # This is a simplified approach - full Steam shortcut creation is complex
+                echo -e "  ${YELLOW}⚠${NC} ${app_name} (manual integration not fully implemented)"
+                log_message "WARN" "Manual Steam integration not fully implemented for $app_name"
+            else
+                echo -e "  ${RED}✗${NC} ${app_name} (Steam user directory not found)"
+                log_message "ERROR" "Steam user directory not found for $app_name"
+            fi
+        fi
+    done
+    
+    if [ $added_count -gt 0 ]; then
+        echo -e "${GREEN}[✓]${NC} Added $added_count applications to Steam library"
+        log_message "INFO" "Successfully added $added_count apps to Steam library"
+        echo -e "${YELLOW}[INFO]${NC} Restart Steam to see new applications in your library"
+    else
+        echo -e "${YELLOW}[INFO]${NC} No applications were added to Steam library"
+    fi
+    echo ""
+}
+
+# Function to offer post-installation app launching
+post_installation_launch() {
+    local installed_apps=("$@")
+    
+    # Skip if no apps were installed
+    if [ ${#installed_apps[@]} -eq 0 ]; then
+        return 0
+    fi
+    
+    # Skip in gaming mode (could interfere with Big Picture)
+    if [[ "$GAMING_MODE" == "true" ]]; then
+        log_message "INFO" "Skipping post-install launch in gaming mode"
+        return 0
+    fi
+    
+    echo -e "${CYAN}╔════════════════════════════════════════════════════════════════════╗"
+    echo -e "║                        ${WHITE}LAUNCH APPLICATIONS${CYAN}                         ║"
+    echo -e "╚════════════════════════════════════════════════════════════════════╝${NC}"
+    echo ""
+    
+    echo -e "${WHITE}Would you like to launch any of the newly installed applications?${NC}"
+    echo ""
+    
+    for i in "${!installed_apps[@]}"; do
+        local app_id="${installed_apps[$i]}"
+        local app_name="${app_names[$app_id]}"
+        
+        echo -e "${YELLOW}[$((i+1))]${NC} ${app_name}"
+    done
+    echo -e "${YELLOW}[0]${NC} Skip launching apps"
+    echo ""
+    
+    while true; do
+        read -p "$(echo -e "${WHITE}Choose an app to launch [0-${#installed_apps[@]}]: ${NC}")" choice
+        
+        if [[ "$choice" == "0" ]]; then
+            echo -e "${YELLOW}[INFO]${NC} Skipping app launches"
+            log_message "INFO" "User chose to skip post-install app launches"
+            break
+        elif [[ "$choice" =~ ^[1-9][0-9]*$ ]] && [ "$choice" -le "${#installed_apps[@]}" ]; then
+            local selected_app="${installed_apps[$((choice-1))]}"
+            local selected_name="${app_names[$selected_app]}"
+            
+            echo -e "${BLUE}[LAUNCH]${NC} Starting ${selected_name}..."
+            log_message "INFO" "Launching $selected_name ($selected_app)"
+            
+            # Launch the app in background
+            flatpak run "$selected_app" &
+            local launch_pid=$!
+            
+            echo -e "${GREEN}[✓]${NC} ${selected_name} launched (PID: $launch_pid)"
+            
+            # Ask if they want to launch another
+            echo ""
+            read -p "$(echo -e "${WHITE}Launch another app? ${GREEN}[y]${WHITE}es/${RED}[N]${WHITE}o: ${NC}")" -r
+            if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+                break
+            fi
+            echo ""
+        else
+            echo -e "${RED}[ERROR]${NC} Invalid choice. Please enter a number between 0 and ${#installed_apps[@]}"
+        fi
+    done
+    
+    echo ""
 }
 
 # Title screen function
@@ -1054,6 +1253,30 @@ else
     echo ""
     echo -e "${YELLOW}[INFO]${NC} Applications can be launched from your application menu"
     echo -e "${YELLOW}[INFO]${NC} or via command line using: ${GRAY}flatpak run <application-id>${NC}"
+fi
+
+# ════════════════════════════════════════════════════════════════════
+# PHASE 4: POST-INSTALLATION STEAMDECK FEATURES
+# ════════════════════════════════════════════════════════════════════
+
+# Only run Phase 4 features if we have successful installations
+if [ ${#successful_installations[@]} -gt 0 ]; then
+    echo ""
+    echo -e "${CYAN}╔════════════════════════════════════════════════════════════════════╗"
+    echo -e "║                        ${WHITE}POST-INSTALLATION SETUP${CYAN}                      ║"
+    echo -e "╚════════════════════════════════════════════════════════════════════╝${NC}"
+    echo ""
+    
+    log_message "INFO" "Starting Phase 4 post-installation features"
+    
+    # Create desktop shortcuts
+    create_desktop_shortcuts "${successful_installations[@]}"
+    
+    # Add to Steam library (SteamDeck only)
+    add_to_steam_library "${successful_installations[@]}"
+    
+    # Offer to launch applications
+    post_installation_launch "${successful_installations[@]}"
 fi
 
 echo ""
