@@ -1,9 +1,9 @@
-# 🚀 Flatpack Auto-Installer v3.0
+# 🚀 Flatpack Auto-Installer v3.3
 
 <div align="center">
 
 ![Flatpack Logo](https://img.shields.io/badge/Flatpack-Auto--Installer-blue?style=for-the-badge&logo=linux)
-![Version](https://img.shields.io/badge/version-3.0-green?style=for-the-badge)
+![Version](https://img.shields.io/badge/version-3.3-green?style=for-the-badge)
 ![License](https://img.shields.io/badge/license-MIT-yellow?style=for-the-badge)
 ![Platform](https://img.shields.io/badge/platform-Linux-red?style=for-the-badge&logo=linux)
 
@@ -59,6 +59,19 @@ Created by **ShadowHarvy** (Ex-Hacker & Security Enthusiast), this tool focuses 
 - **Progress Tracking** - Real-time installation progress with visual indicators
 - **Storage Validation** - Pre-flight disk space checking
 - **Configuration System** - Extensive customization via config files
+
+### 🧠 Smart Features (NEW in v3.3)
+- **System Detection** - Auto-detects SteamDeck, Bazzite, or desktop Linux
+- **Gaming Mode Detection** - Adapts interface for Gamescope/Big Picture
+- **Dry-Run Mode** - Preview installations without executing
+- **Command-Line Arguments** - Full CLI support with --dry-run, --verbose, --help
+- **Comprehensive Logging** - Multi-level logging with DEBUG/INFO/WARN/ERROR
+
+### 🎮 SteamDeck Features (NEW in v3.3)
+- **Steam Library Integration** - Auto-adds Flatpaks to Steam (SteamDeck only)
+- **Desktop Shortcuts** - Creates .desktop files with proper metadata
+- **Post-Install Launching** - Interactive menu to test apps immediately
+- **System-Aware Operation** - Features activate based on detected system type
 
 ### 🛠️ Technical Features
 - **Error Recovery** - Intelligent handling of installation failures
@@ -128,14 +141,20 @@ bash <(curl -s https://raw.githubusercontent.com/comShadowHarvy/flatpack/main/in
 
 ### Advanced Usage
 ```bash
-# Check what would be installed (dry-run mode coming soon)
+# Preview what would be installed (NEW!)
 ./install_flatpaks.sh --dry-run
 
 # Run with verbose output
-VERBOSE_OUTPUT=true ./install_flatpaks.sh
+./install_flatpaks.sh --verbose
 
 # Run with custom parallel jobs
-PARALLEL_JOBS=5 ./install_flatpaks.sh
+./install_flatpaks.sh --parallel-jobs 5
+
+# Show help and all options
+./install_flatpaks.sh --help
+
+# Combine options
+./install_flatpaks.sh --dry-run --verbose --parallel-jobs 3
 ```
 
 ### Interactive Features
