@@ -449,3 +449,145 @@ If you find this project helpful:
 [⬆️ Back to top](#-flatpack-auto-installer-v30)
 
 </div>
+
+---
+
+# 🔄 Flatpack Update Manager (flatpack.py)
+
+## Overview
+
+The **Flatpack Update Manager** is a comprehensive Python script designed to simplify and optimize Flatpak application updates. While the main installer script focuses on initial setup, this update manager provides ongoing maintenance capabilities.
+
+## ✨ Key Features
+
+### 🎯 Smart Update Detection
+- **Fast Update Checking**: Uses `--no-deploy` flag to detect updates without downloading
+- **Selective Updates**: Only update apps that actually have updates available
+- **No False Positives**: Accurate detection prevents unnecessary operations
+
+### 🚀 Update Management
+- **Smart Update Mode**: Update only apps that need updating (recommended)
+- **Selective Updates**: Update specific applications by ID
+- **Bulk Updates**: Update all applications at once
+- **Interactive & Non-Interactive**: Choose your preferred update experience
+
+### 🛡️ Safety Features
+- **Input Validation**: Validates app IDs before attempting updates
+- **Error Handling**: Graceful handling of failed updates
+- **Status Reporting**: Clear feedback on update success/failure
+- **Dry Run Capability**: Check what updates are available without installing
+
+## 🎮 Usage
+
+### Basic Commands
+
+```bash
+# Make the script executable
+chmod +x flatpack.py
+
+# Check what apps are installed
+./flatpack.py --list
+
+# Check for available updates (recommended first step)
+./flatpack.py --check
+
+# Smart update - only update apps that need updates (RECOMMENDED)
+./flatpack.py --smart-update
+```
+
+### Advanced Commands
+
+```bash
+# Update specific applications
+./flatpack.py --update --apps com.discord.Discord com.github.tchx84.Flatseal
+
+# Update all apps (may be slow if many apps are already up to date)
+./flatpack.py --update
+
+# Interactive mode with prompts
+./flatpack.py --smart-update --interactive
+
+# Get detailed help
+./flatpack.py --help
+```
+
+## 🔧 Command Reference
+
+| Command | Short | Description |
+|---------|-------|-------------|
+| `--list` | `-l` | List all installed Flatpak applications with details |
+| `--check` | `-c` | Check for available updates without installing |
+| `--smart-update` | `-s` | Update only apps that have updates available (recommended) |
+| `--update` | `-u` | Update applications (all or specified) |
+| `--apps APP_ID [...]` | | Specify which apps to update (space-separated) |
+| `--interactive` | `-i` | Run in interactive mode with confirmations |
+| `--version` | `-v` | Show version information |
+| `--help` | `-h` | Show help message and examples |
+
+## 🎯 Recommended Workflow
+
+1. **Check Status**: `./flatpack.py --check`
+   - See which apps have updates available
+   - Get overview of current installation state
+
+2. **Smart Update**: `./flatpack.py --smart-update`
+   - Update only apps that need updating
+   - Saves time and bandwidth
+   - Most efficient update method
+
+3. **Verify**: `./flatpack.py --check`
+   - Confirm all apps are now up to date
+
+## 🔍 Example Scenarios
+
+### Scenario 1: Regular Maintenance
+```bash
+# Weekly update routine
+./flatpack.py --check         # See what needs updating
+./flatpack.py --smart-update  # Update only what's needed
+```
+
+### Scenario 2: Specific App Updates
+```bash
+# Update just Discord and Steam
+./flatpack.py --update --apps com.discordapp.Discord com.valvesoftware.Steam
+```
+
+### Scenario 3: System Administration
+```bash
+# List all installed apps for inventory
+./flatpack.py --list > installed_flatpaks.txt
+
+# Check for updates in a script
+./flatpack.py --check && ./flatpack.py --smart-update
+```
+
+## 🛠️ Technical Details
+
+### Update Detection Method
+The script uses `flatpak update --no-deploy --noninteractive` to detect available updates without downloading or installing anything. This provides:
+- Fast detection (no downloads)
+- Accurate results (real Flatpak output)
+- No system changes during check
+
+### Error Handling
+- Validates app IDs against installed applications
+- Provides clear error messages for invalid inputs
+- Handles network failures gracefully
+- Returns appropriate exit codes for scripting
+
+### Performance
+- Smart update mode only processes apps that need updates
+- Parallel processing where supported by Flatpak
+- Minimal resource usage during checks
+
+## 🚀 Integration with Main Installer
+
+The update manager complements the main installation script:
+1. Use `install_flatpaks.sh` for initial setup
+2. Use `flatpack.py` for ongoing maintenance
+3. Both tools work together seamlessly
+
+---
+
+*Flatpack Update Manager - Keeping your Flatpak applications current with intelligence and efficiency.*

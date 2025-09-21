@@ -1050,7 +1050,10 @@ echo "â•‘                        FLATPAK INSTALLER v3.3                       â•
     echo -e "${NC}"
     echo ""
     echo -e "${WHITE}Press ${GREEN}[ENTER]${WHITE} to continue or ${RED}[CTRL+C]${WHITE} to exit...${NC}"
-    read -r
+    echo -e "${GRAY}(Auto-continuing in 10 seconds if no input...)${NC}"
+    read -t 10 -r || {
+        echo -e "\n${YELLOW}[AUTO]${NC} No input detected, automatically continuing installation..."
+    }
 }
 
 # Fake loading screen
@@ -1155,8 +1158,12 @@ check_storage_space() {
         echo -e "${RED}[WARNING]${NC} Low disk space detected!"
         echo -e "${YELLOW}[INFO]${NC} Available: ${available_gb}GB | Recommended: ${required_gb}GB+"
         echo -e "${YELLOW}[INFO]${NC} Installation may fail due to insufficient space."
+        echo -e "${GRAY}(Auto-continuing in 10 seconds if no input...)${NC}"
         echo ""
-        read -p "$(echo -e "${WHITE}Continue anyway? ${GREEN}[y]${WHITE}es/${RED}[N]${WHITE}o: ${NC}")" -r
+        read -t 10 -p "$(echo -e "${WHITE}Continue anyway? ${GREEN}[y]${WHITE}es/${RED}[N]${WHITE}o: ${NC}")" -r || {
+            echo -e "\n${YELLOW}[AUTO]${NC} No input detected, automatically continuing..."
+            REPLY="y"
+        }
         echo ""
         if [[ ! $REPLY =~ ^[Yy]$ ]]; then
             echo -e "${YELLOW}[INFO]${NC} Installation cancelled by user."
@@ -1367,9 +1374,13 @@ load_installation_state() {
         
         echo -e "${GRAY}          Last run: $timestamp${NC}"
         echo -e "${GRAY}          Previous: $prev_successful successful, $prev_failed failed${NC}"
+        echo -e "${GRAY}(Auto-continuing fresh in 10 seconds if no input...)${NC}"
         echo ""
         
-        read -p "$(echo -e "${WHITE}Resume from previous state? ${GREEN}[y]${WHITE}es/${RED}[N]${WHITE}o: ${NC}")" -r
+        read -t 10 -p "$(echo -e "${WHITE}Resume from previous state? ${GREEN}[y]${WHITE}es/${RED}[N]${WHITE}o: ${NC}")" -r || {
+            echo -e "\n${YELLOW}[AUTO]${NC} No input detected, starting fresh installation..."
+            REPLY="n"
+        }
         if [[ $REPLY =~ ^[Yy]$ ]]; then
             echo -e "${GREEN}[INFO]${NC} Resuming from previous installation state..."
             
