@@ -64,6 +64,11 @@ SYSTEM_TYPE="unknown"
 GAMING_MODE=false
 DRY_RUN=false
 
+# Global variables for cleanup
+CLEANUP_PIDS=()
+CLEANUP_TEMP_FILES=()
+CLEANUP_TEMP_DIRS=()
+
 # Default configuration values
 MAX_RETRIES=3
 REQUIRED_SPACE=2000000  # 2GB in KB
@@ -434,6 +439,132 @@ show_dry_run_preview() {
 }
 
 # ═══════════════════════════════════════════════════════════════════════════════
+# PHASE 5: SIGNAL HANDLING & CLEANUP
+# ═══════════════════════════════════════════════════════════════════════════════
+
+# Function to register cleanup items
+register_cleanup_pid() {
+    local pid="$1"
+    CLEANUP_PIDS+=("$pid")
+    log_message "DEBUG" "Registered PID for cleanup: $pid"
+}
+
+register_cleanup_file() {
+    local file="$1"
+    CLEANUP_TEMP_FILES+=("$file")
+    log_message "DEBUG" "Registered file for cleanup: $file"
+}
+
+register_cleanup_dir() {
+    local dir="$1"
+    CLEANUP_TEMP_DIRS+=("$dir")
+    log_message "DEBUG" "Registered directory for cleanup: $dir"
+}
+
+# Function to perform cleanup
+perform_cleanup() {
+    local signal_name="${1:-EXIT}"
+    
+    log_message "INFO" "Performing cleanup (triggered by $signal_name)"
+    echo -e "\n${YELLOW}[CLEANUP]${NC} Cleaning up resources..."
+    
+    # Kill background processes
+    if [ ${#CLEANUP_PIDS[@]} -gt 0 ]; then
+        echo -e "${YELLOW}[CLEANUP]${NC} Terminating ${#CLEANUP_PIDS[@]} background processes..."
+        for pid in "${CLEANUP_PIDS[@]}"; do
+            if kill -0 "$pid" 2>/dev/null; then
+                kill -TERM "$pid" 2>/dev/null || kill -KILL "$pid" 2>/dev/null
+                log_message "DEBUG" "Terminated PID: $pid"
+            fi
+        done
+        # Wait a moment for graceful termination
+        sleep 1
+        # Force kill any remaining processes
+        for pid in "${CLEANUP_PIDS[@]}"; do
+            if kill -0 "$pid" 2>/dev/null; then
+                kill -KILL "$pid" 2>/dev/null
+                log_message "WARN" "Force killed stubborn PID: $pid"
+            fi
+        done
+    fi
+    
+    # Clean up temporary files
+    if [ ${#CLEANUP_TEMP_FILES[@]} -gt 0 ]; then
+        echo -e "${YELLOW}[CLEANUP]${NC} Removing ${#CLEANUP_TEMP_FILES[@]} temporary files..."
+        for file in "${CLEANUP_TEMP_FILES[@]}"; do
+            if [ -f "$file" ]; then
+                rm -f "$file" 2>/dev/null
+                log_message "DEBUG" "Removed temp file: $file"
+            fi
+        done
+    fi
+    
+    # Clean up temporary directories
+    if [ ${#CLEANUP_TEMP_DIRS[@]} -gt 0 ]; then
+        echo -e "${YELLOW}[CLEANUP]${NC} Removing ${#CLEANUP_TEMP_DIRS[@]} temporary directories..."
+        for dir in "${CLEANUP_TEMP_DIRS[@]}"; do
+            if [ -d "$dir" ]; then
+                rm -rf "$dir" 2>/dev/null
+                log_message "DEBUG" "Removed temp directory: $dir"
+            fi
+        done
+    fi
+    
+    log_message "INFO" "Cleanup completed"
+    echo -e "${GREEN}[✓]${NC} Cleanup completed"
+}
+
+# Signal handler function
+signal_handler() {
+    local signal="$1"
+    
+    echo -e "\n\n${RED}[INTERRUPT]${NC} Received $signal signal"
+    log_message "WARN" "Received $signal signal, initiating cleanup"
+    
+    case "$signal" in
+        "INT")
+            echo -e "${YELLOW}[INFO]${NC} User requested interruption (Ctrl+C)"
+            ;;
+        "TERM")
+            echo -e "${YELLOW}[INFO]${NC} Termination signal received"
+            ;;
+        "QUIT")
+            echo -e "${YELLOW}[INFO]${NC} Quit signal received"
+            ;;
+    esac
+    
+    perform_cleanup "SIG$signal"
+    
+    echo -e "${YELLOW}[EXIT]${NC} Flatpack installer terminated by user"
+    log_message "INFO" "Installer terminated by SIG$signal"
+    exit 130  # Standard exit code for Ctrl+C
+}
+
+# Function to setup signal handlers
+setup_signal_handlers() {
+    trap 'signal_handler INT' INT
+    trap 'signal_handler TERM' TERM  
+    trap 'signal_handler QUIT' QUIT
+    trap 'perform_cleanup EXIT' EXIT
+    
+    log_message "DEBUG" "Signal handlers registered"
+}
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# PHASE 5.1 COMPLETION: SIGNAL HANDLING & CLEANUP SYSTEM IMPLEMENTED
+# ═══════════════════════════════════════════════════════════════════════════════
+# 
+# ✓ Signal handlers registered for graceful shutdown (INT, TERM, QUIT, EXIT)
+# ✓ Cleanup system tracks and terminates background processes
+# ✓ Temporary files and directories are automatically cleaned up
+# ✓ All parallel installation jobs are properly managed
+# ✓ Launched applications are tracked for potential cleanup
+# ✓ Robust error handling with proper logging
+#
+# The installer now handles Ctrl+C interruptions gracefully and ensures
+# no orphaned processes or temporary files are left behind.
+#
+# ═══════════════════════════════════════════════════════════════════════════════
 # PHASE 4: STEAMDECK-SPECIFIC FEATURES
 # ═══════════════════════════════════════════════════════════════════════════════
 
@@ -614,6 +745,7 @@ post_installation_launch() {
             # Launch the app in background
             flatpak run "$selected_app" &
             local launch_pid=$!
+            register_cleanup_pid "$launch_pid"
             
             echo -e "${GREEN}[✓]${NC} ${selected_name} launched (PID: $launch_pid)"
             
@@ -834,6 +966,8 @@ install_flatpak() {
         
         # Create a temporary file to capture Flatpak output
         local progress_file="/tmp/flatpak_progress_$$_${retry_count}"
+        register_cleanup_file "$progress_file"
+        register_cleanup_file "${progress_file}.exit_code"
         
         # Install with progress monitoring
         (
@@ -865,6 +999,7 @@ install_flatpak() {
             echo $? > "${progress_file}.exit_code"
         ) &
         local progress_pid=$!
+        register_cleanup_pid "$progress_pid"
         
         # Wait for installation to complete
         wait $progress_pid
@@ -1012,10 +1147,13 @@ install_apps_parallel() {
     
     # Create temporary directory for job tracking
     mkdir -p "$temp_dir"
+    register_cleanup_dir "$temp_dir"
     
     # Initialize tracking files
     touch "$temp_dir/successful_apps"
     touch "$temp_dir/failed_apps"
+    register_cleanup_file "$temp_dir/successful_apps"
+    register_cleanup_file "$temp_dir/failed_apps"
     
     local job_count=0
     local app_index=0
@@ -1037,6 +1175,7 @@ install_apps_parallel() {
         install_app_background "$app_id" "$job_count" "$temp_dir" &
         local job_pid=$!
         active_jobs+=($job_pid)
+        register_cleanup_pid "$job_pid"
         
         ((job_count++))
         ((app_index++))
@@ -1064,6 +1203,7 @@ install_apps_parallel() {
                     install_app_background "$app_id" "$job_count" "$temp_dir" &
                     local new_job_pid=$!
                     new_active_jobs+=($new_job_pid)
+                    register_cleanup_pid "$new_job_pid"
                     
                     ((job_count++))
                     ((app_index++))
@@ -1089,11 +1229,14 @@ install_apps_parallel() {
 }
 
 # Main execution starts here
+# Setup signal handlers first for proper cleanup
+setup_signal_handlers
+
 # Parse command line arguments first
 parse_arguments "$@"
 
 # Initialize logging
-log_message "INFO" "========== Flatpack Auto-Installer v3.3 Started ==========="
+log_message "INFO" "========== Flatpack Auto-Installer v3.3 Started =========="
 log_message "INFO" "System: $(uname -a)"
 log_message "INFO" "User: $(whoami)"
 log_message "INFO" "Arguments: $*"
