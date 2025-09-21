@@ -82,6 +82,8 @@ AUTO_UPDATE_CHECK=false
 CUSTOM_REPOSITORIES=""  # Custom Flatpak repositories
 POST_INSTALL_HOOKS=""  # Scripts to run after installation
 ENVIRONMENT_PROFILE="default"  # Environment-specific settings
+ENABLE_CUSTOM_REPOS=true  # Enable custom repository support
+REPOSITORY_PRIORITY="flathub"  # Default repository priority: flathub, custom, all
 
 # Function to create default configuration file
 create_default_config() {
@@ -125,12 +127,25 @@ ENABLE_SYSTEM_INTEGRATION=true  # Enable system integration features
 # =============================================================================
 # CUSTOM REPOSITORIES & APPLICATIONS
 # =============================================================================
-# Custom Flatpak repositories (space-separated URLs)
-# Example: CUSTOM_REPOSITORIES="https://custom.repo.com/repo.flatpakrepo"
+# Custom Flatpak repositories (space-separated URLs or name:url pairs)
+# Format: "name1:https://repo1.com/repo.flatpakrepo name2:https://repo2.com/repo.flatpakrepo"
+# Or simple URLs: "https://repo1.com/repo.flatpakrepo https://repo2.com/repo.flatpakrepo"
+# Examples:
+#   CUSTOM_REPOSITORIES="flathub-beta:https://flathub.org/beta-repo/flathub-beta.flatpakrepo"
+#   CUSTOM_REPOSITORIES="winepak:https://dl.winepak.org/repo/winepak.flatpakrepo"
+#   CUSTOM_REPOSITORIES="elementary:https://flatpak.elementary.io/repo.flatpakrepo"
 CUSTOM_REPOSITORIES=""
+
+# Enable custom repository support (true/false)
+ENABLE_CUSTOM_REPOS=true
+
+# Repository priority for app installations
+# Options: flathub (Flathub only), custom (custom repos only), all (try all repos)
+REPOSITORY_PRIORITY="flathub"
 
 # Custom applications to install (space-separated Flatpak IDs)
 # Add your own apps here: CUSTOM_APPS="app.id.here another.app.id"
+# You can optionally specify repository: CUSTOM_APPS="repo-name:app.id.here flathub:another.app.id"
 CUSTOM_APPS=""
 
 # =============================================================================
@@ -174,6 +189,9 @@ load_config() {
                 CREATE_DESKTOP_SHORTCUTS) CREATE_DESKTOP_SHORTCUTS="$value" ;;
                 PARALLEL_JOBS) PARALLEL_JOBS="$value" ;;
                 CUSTOM_APPS) CUSTOM_APPS="$value" ;;
+                CUSTOM_REPOSITORIES) CUSTOM_REPOSITORIES="$value" ;;
+                ENABLE_CUSTOM_REPOS) ENABLE_CUSTOM_REPOS="$value" ;;
+                REPOSITORY_PRIORITY) REPOSITORY_PRIORITY="$value" ;;
             esac
         done < "$CONFIG_FILE"
         
@@ -565,6 +583,229 @@ setup_signal_handlers() {
 # no orphaned processes or temporary files are left behind.
 #
 # ═══════════════════════════════════════════════════════════════════════════════
+# PHASE 6.1: CUSTOM REPOSITORY SUPPORT
+# ═══════════════════════════════════════════════════════════════════════════════
+#
+# ✓ Custom repository parsing and validation
+# ✓ Repository URL accessibility checking
+# ✓ Flatpak remote management integration
+# ✓ Repository priority system (flathub, custom, all)
+# ✓ App-specific repository specification support
+# ✓ Installation retry logic across multiple repositories
+# ✓ Repository status display and logging
+# ✓ Configuration support for custom repositories
+#
+
+# Global repository state
+declare -A REPO_URLS=()  # name -> url mapping
+declare -A REPO_STATUS=() # name -> status mapping (active/inactive/error)
+REPO_LIST=()  # ordered list of repository names
+
+# Function to parse custom repositories from config
+parse_custom_repositories() {
+    local repos="$1"
+    
+    # Skip if empty or disabled
+    if [[ -z "$repos" ]] || [[ "$ENABLE_CUSTOM_REPOS" != "true" ]]; then
+        log_message "DEBUG" "Custom repositories disabled or empty"
+        return 0
+    fi
+    
+    log_message "INFO" "Parsing custom repositories: $repos"
+    
+    # Parse space-separated repository entries
+    while IFS=' ' read -ra REPO_ENTRIES; do
+        for entry in "${REPO_ENTRIES[@]}"; do
+            [[ -z "$entry" ]] && continue
+            
+            # Parse name:url format or just url
+            if [[ "$entry" == *":"* ]]; then
+                # Format: name:url
+                local name="${entry%%:*}"
+                local url="${entry#*:}"
+            else
+                # Format: just url - extract name from URL
+                local url="$entry"
+                local name=$(echo "$url" | sed -E 's|.*/([^/]+)\.flatpakrepo$|\1|' | tr '[:upper:]' '[:lower:]')
+                [[ -z "$name" ]] && name="custom-$(date +%s)"
+            fi
+            
+            # Validate URL format
+            if [[ "$url" =~ ^https?://.*\.flatpakrepo$ ]]; then
+                REPO_URLS["$name"]="$url"
+                REPO_STATUS["$name"]="pending"
+                REPO_LIST+=("$name")
+                log_message "INFO" "Added repository: $name -> $url"
+            else
+                log_message "WARN" "Invalid repository format: $entry (must be HTTP(S) .flatpakrepo URL)"
+            fi
+        done
+    done <<< "$repos"
+    
+    log_message "INFO" "Parsed ${#REPO_LIST[@]} custom repositories"
+}
+
+# Function to validate repository accessibility
+validate_repository() {
+    local name="$1"
+    local url="${REPO_URLS[$name]}"
+    
+    log_message "DEBUG" "Validating repository: $name ($url)"
+    
+    # Check URL accessibility with timeout
+    if timeout 10 curl -sSf --head "$url" >/dev/null 2>&1; then
+        REPO_STATUS["$name"]="active"
+        log_message "INFO" "Repository $name is accessible"
+        return 0
+    else
+        REPO_STATUS["$name"]="error"
+        log_message "WARN" "Repository $name is not accessible: $url"
+        return 1
+    fi
+}
+
+# Function to add custom repository to Flatpak
+add_flatpak_repository() {
+    local name="$1"
+    local url="${REPO_URLS[$name]}"
+    
+    log_message "INFO" "Adding Flatpak repository: $name ($url)"
+    
+    # Check if already added
+    if flatpak remotes | grep -q "^$name\s"; then
+        log_message "DEBUG" "Repository $name already exists in Flatpak"
+        REPO_STATUS["$name"]="active"
+        return 0
+    fi
+    
+    # Add repository
+    if flatpak remote-add --if-not-exists "$name" "$url" 2>/dev/null; then
+        REPO_STATUS["$name"]="active"
+        log_message "INFO" "Successfully added repository: $name"
+        return 0
+    else
+        REPO_STATUS["$name"]="error"
+        log_message "ERROR" "Failed to add repository: $name ($url)"
+        return 1
+    fi
+}
+
+# Function to setup custom repositories
+setup_custom_repositories() {
+    # Parse repositories from config
+    parse_custom_repositories "$CUSTOM_REPOSITORIES"
+    
+    # Skip if no repositories to add
+    if [ ${#REPO_LIST[@]} -eq 0 ]; then
+        log_message "DEBUG" "No custom repositories to configure"
+        return 0
+    fi
+    
+    echo -e "${YELLOW}[INFO]${NC} Setting up ${#REPO_LIST[@]} custom repositories..."
+    
+    local added_count=0
+    local failed_count=0
+    
+    for repo_name in "${REPO_LIST[@]}"; do
+        echo -n -e "${YELLOW}[REPO]${NC} Configuring $repo_name... "
+        
+        # Validate repository first
+        if validate_repository "$repo_name"; then
+            # Add to Flatpak
+            if add_flatpak_repository "$repo_name"; then
+                echo -e "${GREEN}✓${NC}"
+                ((added_count++))
+            else
+                echo -e "${RED}✗${NC}"
+                ((failed_count++))
+            fi
+        else
+            echo -e "${YELLOW}⚠ (unreachable)${NC}"
+            ((failed_count++))
+        fi
+    done
+    
+    # Summary
+    if [ $added_count -gt 0 ]; then
+        echo -e "${GREEN}[✓]${NC} Added $added_count custom repositories"
+        log_message "INFO" "Successfully added $added_count custom repositories"
+    fi
+    
+    if [ $failed_count -gt 0 ]; then
+        echo -e "${YELLOW}[WARN]${NC} $failed_count repositories failed to configure"
+        log_message "WARN" "$failed_count custom repositories failed to configure"
+    fi
+    
+    echo ""
+}
+
+# Function to get available repositories for installation
+get_installation_repositories() {
+    local priority="$1"
+    local available_repos=()
+    
+    case "$priority" in
+        "flathub")
+            available_repos=("flathub")
+            ;;
+        "custom")
+            # Only use active custom repositories
+            for repo_name in "${REPO_LIST[@]}"; do
+                if [[ "${REPO_STATUS[$repo_name]}" == "active" ]]; then
+                    available_repos+=("$repo_name")
+                fi
+            done
+            ;;
+        "all"|*)
+            # Use all repositories - Flathub first, then custom
+            available_repos=("flathub")
+            for repo_name in "${REPO_LIST[@]}"; do
+                if [[ "${REPO_STATUS[$repo_name]}" == "active" ]]; then
+                    available_repos+=("$repo_name")
+                fi
+            done
+            ;;
+    esac
+    
+    echo "${available_repos[@]}"
+}
+
+# Function to show repository status
+show_repository_status() {
+    echo -e "${CYAN}[REPOSITORIES]${NC} Available repositories:"
+    
+    # Always show Flathub
+    if flatpak remotes | grep -q "flathub"; then
+        echo -e "  ${GREEN}✓${NC} flathub (https://flathub.org/repo/flathub.flatpakrepo)"
+    else
+        echo -e "  ${RED}✗${NC} flathub (not configured)"
+    fi
+    
+    # Show custom repositories
+    if [ ${#REPO_LIST[@]} -gt 0 ]; then
+        for repo_name in "${REPO_LIST[@]}"; do
+            local url="${REPO_URLS[$repo_name]}"
+            local status="${REPO_STATUS[$repo_name]}"
+            
+            case "$status" in
+                "active")
+                    echo -e "  ${GREEN}✓${NC} $repo_name ($url)"
+                    ;;
+                "error")
+                    echo -e "  ${RED}✗${NC} $repo_name ($url)"
+                    ;;
+                "pending")
+                    echo -e "  ${YELLOW}⏳${NC} $repo_name ($url)"
+                    ;;
+            esac
+        done
+    fi
+    
+    echo -e "${CYAN}[POLICY]${NC} Repository priority: ${YELLOW}$REPOSITORY_PRIORITY${NC}"
+    echo ""
+}
+
+# ═══════════════════════════════════════════════════════════════════════════════
 # PHASE 4: STEAMDECK-SPECIFIC FEATURES
 # ═══════════════════════════════════════════════════════════════════════════════
 
@@ -946,102 +1187,154 @@ declare -A app_names=(
     ["com.github.tchx84.Flatseal"]="Flatseal (Permissions Manager)"
 )
 
-# Function to install a Flatpak application with retry logic
+# Function to parse app repository specification
+parse_app_repository() {
+    local app_spec="$1"
+    local repo=""
+    local app_id=""
+    
+    # Check if app_spec contains repository specification (repo:app_id format)
+    if [[ "$app_spec" == *":"* ]]; then
+        repo="${app_spec%%:*}"
+        app_id="${app_spec#*:}"
+    else
+        app_id="$app_spec"
+    fi
+    
+    echo "$repo|$app_id"
+}
+
+# Function to install a Flatpak application with retry logic and repository support
 install_flatpak() {
-    local app_id="$1"
+    local app_spec="$1"
+    local parsed_result=$(parse_app_repository "$app_spec")
+    local specified_repo="${parsed_result%%|*}"
+    local app_id="${parsed_result#*|}"
     local friendly_name="${app_names[$app_id]}"
     local max_retries=$MAX_RETRIES
     local retry_count=0
     
     echo -e "${BLUE}[INSTALL]${NC} Installing ${YELLOW}$friendly_name${NC} ($app_id)..."
     
-    while [ $retry_count -lt $max_retries ]; do
-        # Show attempt number if this is a retry
-        if [ $retry_count -gt 0 ]; then
-            echo -e "${YELLOW}[RETRY]${NC} Attempt $(($retry_count + 1)) of $max_retries for $friendly_name"
-        fi
+    # Determine which repositories to try
+    local repos_to_try=()
+    if [[ -n "$specified_repo" ]]; then
+        # App specified a specific repository
+        repos_to_try=("$specified_repo")
+        echo -e "${CYAN}[REPO]${NC} Using specified repository: $specified_repo"
+    else
+        # Use repositories based on priority setting
+        IFS=' ' read -ra repos_to_try <<< "$(get_installation_repositories "$REPOSITORY_PRIORITY")"
+        echo -e "${CYAN}[REPO]${NC} Repository priority: $REPOSITORY_PRIORITY (trying: ${repos_to_try[*]})"
+    fi
+    
+    # Try each repository until successful
+    local tried_repos=()
+    local last_error=""
+    
+    for repo in "${repos_to_try[@]}"; do
+        if [[ -z "$repo" ]]; then continue; fi
         
-        # Real installation progress tracking
-        echo -n "          Progress: "
+        tried_repos+=("$repo")
+        retry_count=0
         
-        # Create a temporary file to capture Flatpak output
-        local progress_file="/tmp/flatpak_progress_$$_${retry_count}"
-        register_cleanup_file "$progress_file"
-        register_cleanup_file "${progress_file}.exit_code"
+        echo -e "${YELLOW}[REPO]${NC} Trying repository: $repo"
         
-        # Install with progress monitoring
-        (
-            flatpak install --noninteractive flathub "$app_id" 2>&1 | \
-            while IFS= read -r line; do
-                echo "$line" >> "$progress_file"
-                
-                # Extract progress from Flatpak output
-                if [[ $line == *"Downloading"* ]]; then
-                    echo -n "D"
-                elif [[ $line == *"Installing"* ]]; then
-                    echo -n "I"
-                elif [[ $line == *"Resolving"* ]]; then
-                    echo -n "R"
-                elif [[ $line == *"Fetching"* ]]; then
-                    echo -n "F"
-                elif [[ $line == *"delta"* ]]; then
-                    echo -n "Δ"
-                elif [[ $line =~ [0-9]+% ]]; then
-                    # Extract percentage if available
-                    local percent=$(echo "$line" | grep -o '[0-9]*%' | head -1)
-                    if [ -n "$percent" ]; then
-                        echo -n "[$percent]"
-                    fi
-                else
-                    echo -n "."
-                fi
-            done
-            echo $? > "${progress_file}.exit_code"
-        ) &
-        local progress_pid=$!
-        register_cleanup_pid "$progress_pid"
-        
-        # Wait for installation to complete
-        wait $progress_pid
-        local install_exit_code=$(cat "${progress_file}.exit_code" 2>/dev/null || echo "1")
-        
-        echo "  ✓"
-        
-        # Clean up progress files and use the captured result
-        local install_output=$(cat "$progress_file" 2>/dev/null || echo "No output captured")
-        rm -f "$progress_file" "${progress_file}.exit_code"
-        
-        # Check installation result
-        if [ "$install_exit_code" -eq 0 ]; then
-            echo -e "${GREEN}[✓ SUCCESS]${NC} $friendly_name installed successfully"
-            return 0
-        else
-            retry_count=$((retry_count + 1))
-            
-            if [ $retry_count -lt $max_retries ]; then
-                echo -e "${YELLOW}[⚠ RETRY]${NC} Installation failed, retrying in 2 seconds..."
-                
-                # Show specific error for debugging (first 100 chars)
-                local error_snippet=$(echo "$install_output" | head -1 | cut -c1-80)
-                if [ -n "$error_snippet" ]; then
-                    echo -e "${GRAY}          Error: $error_snippet${NC}"
-                fi
-                
-                sleep 2
-            else
-                echo -e "${RED}[✗ FAILED]${NC} Failed to install $friendly_name after $max_retries attempts"
-                
-                # Show more detailed error on final failure
-                local error_detail=$(echo "$install_output" | grep -E "(error|Error|ERROR|failed|Failed|FAILED)" | head -1 | cut -c1-80)
-                if [ -n "$error_detail" ]; then
-                    echo -e "${GRAY}          Final error: $error_detail${NC}"
-                fi
-                
-                return 1
+        while [ $retry_count -lt $max_retries ]; do
+            # Show attempt number if this is a retry
+            if [ $retry_count -gt 0 ]; then
+                echo -e "${YELLOW}[RETRY]${NC} Attempt $(($retry_count + 1)) of $max_retries for $friendly_name from $repo"
             fi
-        fi
+            
+            # Real installation progress tracking
+            echo -n "          Progress: "
+            
+            # Create a temporary file to capture Flatpak output
+            local progress_file="/tmp/flatpak_progress_$$_${retry_count}_${repo}"
+            register_cleanup_file "$progress_file"
+            register_cleanup_file "${progress_file}.exit_code"
+            
+            # Install with progress monitoring from specified repository
+            (
+                flatpak install --noninteractive "$repo" "$app_id" 2>&1 | \
+                while IFS= read -r line; do
+                    echo "$line" >> "$progress_file"
+                    
+                    # Extract progress from Flatpak output
+                    if [[ $line == *"Downloading"* ]]; then
+                        echo -n "D"
+                    elif [[ $line == *"Installing"* ]]; then
+                        echo -n "I"
+                    elif [[ $line == *"Resolving"* ]]; then
+                        echo -n "R"
+                    elif [[ $line == *"Fetching"* ]]; then
+                        echo -n "F"
+                    elif [[ $line == *"delta"* ]]; then
+                        echo -n "Δ"
+                    elif [[ $line =~ [0-9]+% ]]; then
+                        # Extract percentage if available
+                        local percent=$(echo "$line" | grep -o '[0-9]*%' | head -1)
+                        if [ -n "$percent" ]; then
+                            echo -n "[$percent]"
+                        fi
+                    else
+                        echo -n "."
+                    fi
+                done
+                echo $? > "${progress_file}.exit_code"
+            ) &
+            local progress_pid=$!
+            register_cleanup_pid "$progress_pid"
+            
+            # Wait for installation to complete
+            wait $progress_pid
+            local install_exit_code=$(cat "${progress_file}.exit_code" 2>/dev/null || echo "1")
+            
+            echo "  ✓"
+            
+            # Clean up progress files and use the captured result
+            local install_output=$(cat "$progress_file" 2>/dev/null || echo "No output captured")
+            rm -f "$progress_file" "${progress_file}.exit_code"
+            
+            # Check installation result
+            if [ "$install_exit_code" -eq 0 ]; then
+                echo -e "${GREEN}[✓ SUCCESS]${NC} $friendly_name installed successfully from $repo"
+                log_message "INFO" "Successfully installed $app_id from repository $repo"
+                return 0
+            else
+                retry_count=$((retry_count + 1))
+                
+                # Capture error for potential later use
+                last_error=$(echo "$install_output" | grep -E "(error|Error|ERROR|failed|Failed|FAILED)" | head -1 | cut -c1-80)
+                
+                if [ $retry_count -lt $max_retries ]; then
+                    echo -e "${YELLOW}[⚠ RETRY]${NC} Installation failed from $repo, retrying in 2 seconds..."
+                    
+                    # Show specific error for debugging (first 100 chars)
+                    local error_snippet=$(echo "$install_output" | head -1 | cut -c1-80)
+                    if [ -n "$error_snippet" ]; then
+                        echo -e "${GRAY}          Error: $error_snippet${NC}"
+                    fi
+                    
+                    sleep 2
+                else
+                    echo -e "${YELLOW}[⚠ REPO FAILED]${NC} Failed to install $friendly_name from $repo after $max_retries attempts"
+                    log_message "WARN" "Failed to install $app_id from repository $repo after $max_retries attempts"
+                    break  # Break out of retry loop, try next repository
+                fi
+            fi
+        done
     done
-    echo ""
+    
+    # If we get here, all repositories failed
+    echo -e "${RED}[✗ FAILED]${NC} Failed to install $friendly_name from all available repositories"
+    echo -e "${GRAY}          Tried repositories: ${tried_repos[*]}${NC}"
+    if [ -n "$last_error" ]; then
+        echo -e "${GRAY}          Last error: $last_error${NC}"
+    fi
+    log_message "ERROR" "Failed to install $app_id from all repositories: ${tried_repos[*]}"
+    
+    return 1
 }
 
 # Function to save installation state
@@ -1306,6 +1599,12 @@ else
     echo -e "${GREEN}[✓]${NC} Flathub repository already configured"
     log_message "DEBUG" "Flathub repository already configured"
 fi
+
+# Setup custom repositories (Phase 6.1)
+setup_custom_repositories
+
+# Show repository status
+show_repository_status
 
 # Check available storage space
 check_storage_space
