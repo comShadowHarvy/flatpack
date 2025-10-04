@@ -1036,11 +1036,12 @@ echo "║                        FLATPAK INSTALLER v3.3                       �
     echo -e "║  ${WHITE}Description: Automated Flatpak installer optimized for${CYAN}              ║"
     echo -e "║               ${WHITE}SteamDeck and Bazzite handheld gaming systems${CYAN}             ║"
     echo "║                                                                      ║"
-    echo -e "║  ${GREEN}Applications included (11 total):${CYAN}                                   ║"
+    echo -e "║  ${GREEN}Applications included (12 total):${CYAN}                                   ║"
     echo -e "║  ${MAGENTA}•${CYAN} Lutris - Wine game manager for your Deck                        ║"
     echo -e "║  ${MAGENTA}•${CYAN} Heroic - Epic Games Store & GOG launcher                        ║"
     echo -e "║  ${MAGENTA}•${CYAN} Discord - Gaming communication & voice chat                      ║"
     echo -e "║  ${MAGENTA}•${CYAN} Spotify - Music streaming while gaming                          ║"
+    echo -e "║  ${MAGENTA}•${CYAN} Stremio - Movies and TV shows streaming platform                ║"
     echo -e "║  ${MAGENTA}•${CYAN} KeePassXC - Secure password manager                             ║"
     echo -e "║  ${MAGENTA}•${CYAN} Flatseal - Flatpak permissions manager (essential)              ║"
     echo "║                                                                      ║"
@@ -1112,6 +1113,7 @@ show_loading_screen() {
 applications=(
     # Original gaming/media apps
     "media.emby.EmbyTheater"
+    "com.stremio.Stremio"
     "io.mrarm.mcpelauncher"
     "org.vinegarhq.Sober"
     "io.github.kolunmi.Bazaar"
@@ -1180,6 +1182,7 @@ check_storage_space() {
 declare -A app_names=(
     # Original gaming/media apps
     ["media.emby.EmbyTheater"]="Emby Theater"
+    ["com.stremio.Stremio"]="Stremio"
     ["io.mrarm.mcpelauncher"]="Minecraft PE Launcher"
     ["org.vinegarhq.Sober"]="Sober (Roblox Client)"
     ["io.github.kolunmi.Bazaar"]="Bazaar Game Launcher"

@@ -46,7 +46,7 @@ Created by **ShadowHarvy** (Ex-Hacker & Security Enthusiast), this tool focuses 
 ## ✨ Features
 
 ### 🎮 Core Features
-- **11 Curated Applications** - Hand-picked for gaming and productivity
+- **12 Curated Applications** - Hand-picked for gaming and productivity
 - **SteamDeck/Bazzite Optimized** - Tailored for handheld gaming systems  
 - **One-Command Installation** - Simple execution with intelligent automation
 - **Security Focused** - Only uses official Flathub repository
@@ -234,6 +234,7 @@ SKIP_ALREADY_INSTALLED=false ./install_flatpaks.sh
 |-------------|------------|-------------|
 | **Discord** | `com.discordapp.Discord` | Gaming communication & voice chat |
 | **Spotify** | `com.spotify.Client` | Music streaming service |
+| **Stremio** | `com.stremio.Stremio` | Movies and TV shows streaming platform |
 | **Emby Theater** | `media.emby.EmbyTheater` | Media center client |
 
 ### 🔧 Utilities & Security
